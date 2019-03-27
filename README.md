@@ -20,23 +20,20 @@ Exposes an elasticsearch query DSL that automagically resolves relations between
 ```crystal
 require "neuroplastic"
 class Model < RethinkORM::Base
+  include Neuroplastic
+
   attribute name : String
   attribute age : Int32
 end
 
-# Rough API
-elastic = Neuroplastic::Elastic(Model).new
-
 # Construct a query
-query = elastic.query
-               .raw_filter({"name": "bill"}) 
+query = Model.elastic.query.raw_filter({"name": "bill"}) 
 
 # Dump the query object
 puts query.build
 
 # Perform search
-elastic.search(query)
-
+Model.elastic.search(query)
 ```
 
 ## Contributing

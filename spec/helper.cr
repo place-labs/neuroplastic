@@ -8,16 +8,19 @@ require "../src/neuroplastic"
 
 # spec models
 ####################################################################################################
+class Base < RethinkORM::Base
+  include Neuroplastic
+end
 
-class Basic < RethinkORM::Base
+class Basic < Base
   attribute name : String
 end
 
-class Parent < RethinkORM::Base
+class Parent < Base
   attribute name : String
 end
 
-class Child < RethinkORM::Base
+class Child < Base
   attribute age : Int32
   belongs_to Parent
 end

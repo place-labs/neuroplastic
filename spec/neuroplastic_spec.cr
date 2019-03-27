@@ -1,8 +1,6 @@
-require "./spec_helper"
+require "./helper"
 
-describe Neuroplastic do
-  # TODO: Write tests
-
+describe Neuroplastic::Elastic do
   it "works" do
     false.should eq(true)
   end

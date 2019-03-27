@@ -6,23 +6,10 @@ class Neuroplastic::Elastic(T)
                       },
                     }]
 
-    alias Sort = Array(Hash(String, NamedTuple(order: Symbol)))
-
     setter :offset, :limit, :sort, :fields, :query_settings
 
     @query_settings : Hash(String, String)?
     @sort = DEFAULT_SORT
-
-    alias Field = NamedTuple(field: Symbol)
-    alias MissingFilter = NamedTuple(missing: Field)
-    alias ExistsFilter = NamedTuple(exists: Field)
-    alias TermFilter = NamedTuple(term: Hash(Symbol, String))
-    alias FieldFilter = Hash(Symbol, Array(TermFilter | MissingFilter))
-    alias RangeFilter = NamedTuple(range: Hash(String, String))
-    alias NotFilter = NamedTuple(not: NamedTuple(filter: FieldFilter))
-    alias RawFilter = Hash(String, String)
-
-    alias Filter = FieldFilter | NotFilter | RangeFilter | MissingFilter | ExistsFilter | RawFilter
 
     def initialize(params = {} of Symbol => String)
       @fields = ["_all"]
@@ -188,58 +175,30 @@ class Neuroplastic::Elastic(T)
     end
 
     protected def build_filters
-      field_filters = [] of Filter
+      filters_field = @filters.try { |f| build_field_filter(f, :or) }
+      or_filter_field = @or_filter.try { |f| build_field_filter(f, :or) }
+      and_filter_field = @and_filter.try { |f| build_field_filter(f, :and) }
 
-      # Local assignment for crystal's nilability checks..
-      filters = @filters
-      or_filter = @or_filter
-      and_filter = @and_filter
-      range_filter = @range_filter
-      nots = @nots
-      missing = @missing
-      exists = @exists
-      raw_filter = @raw_filter
-
-      unless filters.nil?
-        field_filter = build_field_filter(filters, :or)
-        field_filters << field_filter unless field_filter.nil?
-      end
-
-      unless or_filter.nil?
-        field_filter = build_field_filter(or_filter, :or)
-        field_filters << field_filter unless field_filter.nil?
-      end
-
-      unless and_filter.nil?
-        field_filter = build_field_filter(and_filter, :and)
-        field_filters << field_filter unless field_filter.nil?
-      end
-
-      unless nots.nil?
+      not_filter_field = @nots.try do |nots|
         field_filter = build_field_filter(nots, :or)
-        field_filters << ({not: {filter: field_filter}}) unless field_filter.nil?
+        field_filter.try { |f| {not: {filter: f}} }
       end
 
-      unless range_filter.nil?
-        range_fieled_filter = range_filter.map { |value| {range: value} }
-        field_filters += (range_fieled_filter)
-      end
+      range_filter_field = @range_filter.try(&.map { |value| {range: value} })
+      missing_field_filter = @missing.try(&.map { |field| {missing: {field: field}} })
+      exists_field_filter = @exists.try(&.map { |field| {exists: {field: field}} })
 
-      unless missing.nil?
-        missing_field_filter = missing.map { |field| {missing: {field: field}} }
-        field_filters += (missing_field_filter)
-      end
-
-      unless exists.nil?
-        exists_field_filter = exists.map { |field| {exists: {field: field}} }
-        field_filters += (exists_field_filter)
-      end
-
-      unless raw_filter.nil?
-        field_filters += (raw_filter)
-      end
-
-      field_filters
+      # Extremely heterogenous array..
+      # This method allows easier construction through automatic typing
+      [
+        filters_field,
+        or_filter_field,
+        and_filter_field,
+        not_filter_field,
+        range_filter_field,
+        missing_field_filter,
+        exists_field_filter,
+      ].compact.flatten
     end
 
     # Generate filter field
@@ -265,18 +224,16 @@ class Neuroplastic::Elastic(T)
     end
   end
 
-  @@client ||= Neuroplastic::Client.client
+  def self.client
+    Neuroplastic::Client.client
+  end
 
   def self.search(*args)
-    @@client.search *args
+    self.client.search *args
   end
 
   def self.count(*args)
-    @@client.count *args
-  end
-
-  def self.client
-    @@client
+    self.client.count *args
   end
 
   COUNT = "count"
@@ -287,7 +244,6 @@ class Neuroplastic::Elastic(T)
   INDEX = (ENV["ELASTIC_INDEX"] || "default")
 
   @index : String = T.table_name
-
   def initialize(index : String? = nil)
     @index = index unless index.nil?
   end
@@ -300,6 +256,8 @@ class Neuroplastic::Elastic(T)
     builder
   end
 
+  # Query elasticsearch with a query builder object
+  # Accepts a formatter block to transform/annotate loaded results
   def search(builder, &block)
     query = generate_body(builder)
 
@@ -308,7 +266,7 @@ class Neuroplastic::Elastic(T)
     # and current request (e.g groups are annotated with "admin" if the
     # currently logged in user is an admin of the group). nils are removed
     # from the list.
-    result = @@client.search(query)
+    result = self.client.search(query)
 
     ids = result[HITS][HITS].map(&.fetch(ID, defaullt: nil)).compact
     records = T.find_all(ids)
@@ -346,12 +304,12 @@ class Neuroplastic::Elastic(T)
     # Allow override of index for parent queries
     index = builder.parent || @index
 
-    sort = (opt[:sort]? || [] of Array(Query::Sort | String)) + SCORE
+    sort = (opt[:sort]? || [] of Array(String)) + SCORE
 
     queries = opt[:queries]? || [] of String
     queries.unshift(opt[:query])
 
-    filters = opt[:filters]? || [] of Filter
+    filters = opt[:filters]? || [] of Hash(String, String)
 
     unless @filter.nil?
       filters.unshift({type: {value: @filter}})

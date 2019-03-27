@@ -17,39 +17,26 @@ Exposes an elasticsearch query DSL that automagically resolves relations between
 
 ## Usage
 
-This a sketch of the API. DO NOT USE AS REFERENCE!
-
 ```crystal
 require "neuroplastic"
 class Model < RethinkORM::Base
-  include Neuroplastic::Elastic
   attribute name : String
   attribute age : Int32
 end
 
-# Rough api, most likely to be less of a dsl and rather a thin elasticsearch wrapper
-query = Model.elastic()
+# Rough API
+elastic = Neuroplastic::Elastic(Model).new
 
-# Construct query like so...
-query.raw_filter({"name": "bill"})
-query.name.sort.desc
-query.age.filter(lte: 30)
-query.name.search_field # weight name field
+# Construct a query
+query = elastic.query
+               .raw_filter({"name": "bill"}) 
 
-# Alternative
-query.raw_filter({"name": "bill"})
-query.sort["name"] = Neuroplastic::Sort::Desc
-query.filter = {} # Some filter object
-query.search_field("name") # Weight the field
-
-# Dump the constructed query
-puts query.to_json
+# Dump the query object
+puts query.build
 
 # Perform search
-query.search
+elastic.search(query)
 
-# Or
-Model.search query
 ```
 
 ## Contributing

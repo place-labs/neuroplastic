@@ -1,5 +1,4 @@
 module Neuroplastic
 end
 
-require "./query"
-require "./client"
+require "./elastic"

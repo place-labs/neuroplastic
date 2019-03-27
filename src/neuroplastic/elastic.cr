@@ -1,14 +1,13 @@
-require "./query"
-require "./client"
-
 class Neuroplastic::Elastic
-  COUNT = "count"
-  HITS  = "hits"
-  TOTAL = "total"
-  ID    = "_id"
-  SCORE = ["_score"]
+  COUNT  = "count"
+  HITS   = "hits"
+  TOTAL  = "total"
+  SCORE  = ["_score"]
+  ID     = "_id"
+  SOURCE = "_source"
+  TYPE   = "type"
 
-  def initialize(@index : String)
+  def initialize(@index : String, @type : String)
   end
 
   def self.client
@@ -43,8 +42,13 @@ class Neuroplastic::Elastic
     # from the list.
     result = self.client.search(query)
 
-    ids = result[HITS][HITS].map(&.fetch(ID, defaullt: nil)).compact
-    records = T.find_all(ids)
+    # Pick off results that do not match the document type
+    ids = result[HITS][HITS].compact_map do |hit|
+      doc_type = hit[SOURCE][TYPE].as_s
+      doc_type == @type ? hit[ID].as_s : nil
+    end
+
+    records = {{ @type.id }}.find_all(ids)
 
     results = block_given? ? (records.map { |record| yield record }).compact : records
 
@@ -60,6 +64,11 @@ class Neuroplastic::Elastic
       total:   total,
       results: results,
     }
+  end
+
+  # Reopened and defined in the module index
+  def find_all(ids)
+    raise "undefined"
   end
 
   def count(builder)

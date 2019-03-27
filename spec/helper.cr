@@ -5,6 +5,7 @@ require "rethinkdb-orm"
 require "rubber-soul"
 
 require "../src/neuroplastic"
+require "../src/neuroplastic/*"
 
 # spec models
 ####################################################################################################

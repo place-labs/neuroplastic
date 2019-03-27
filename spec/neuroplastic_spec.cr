@@ -6,8 +6,8 @@ describe Neuroplastic::Elastic do
 
   pending "#search" do
     recreate_index(BasicModel.table_name)
-    elastic = Neuroplastic::Elastic(BasicModel).new
-    elastic.search(elastic.query)
+    query = Basic.elastic.query
+    Basic.elastic.search(query)
   end
 
   pending "has_parent query" do

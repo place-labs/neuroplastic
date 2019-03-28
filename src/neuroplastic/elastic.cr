@@ -1,4 +1,4 @@
-class Neuroplastic::Elastic
+class Neuroplastic::Elastic(T)
   COUNT  = "count"
   HITS   = "hits"
   TOTAL  = "total"
@@ -7,19 +7,30 @@ class Neuroplastic::Elastic
   SOURCE = "_source"
   TYPE   = "type"
 
-  def initialize(@index : String, @type : String)
+  # Index defaults to rethinkdb table name
+  @index : String = T.table_name
+
+  # Document type defaults to class name without namespace
+  @type : String = T.class.name.split("::").last
+
+  def initialize(index : String? = nil, type : String? = nil)
+    @type = type unless type.nil?
+    @index = index unless index.nil?
   end
 
-  def self.client
+  # Yields the elastic search client
+  def client
     Neuroplastic::Client.client
   end
 
-  def self.search(*args)
-    self.client.search *args
+  # Performs search with elastic client
+  def search(*args)
+    client.search *args
   end
 
-  def self.count(*args)
-    self.client.count *args
+  # Performs count search with elastic client
+  def count(*args)
+    client.count *args
   end
 
   # Safely build the query
@@ -30,45 +41,79 @@ class Neuroplastic::Elastic
     builder
   end
 
-  # Query elasticsearch with a query builder object
-  # Accepts a formatter block to transform/annotate loaded results
+  # FIXME: Code duplication across #search
+
+  # Query elasticsearch with a query builder object, accepts a formatter block
+  # Allows annotation/conversion of records using data from the model.
+  # Nils are removed from the list.
   def search(builder, &block)
     query = generate_body(builder)
+    result = client.search(query.to_h)
 
-    # if a formatter block is supplied, each loaded record is passed to it
-    # allowing annotation/conversion of records using data from the model
-    # and current request (e.g groups are annotated with "admin" if the
-    # currently logged in user is an admin of the group). nils are removed
-    # from the list.
-    result = self.client.search(query)
-
-    # Pick off results that do not match the document type
-    ids = result[HITS][HITS].compact_map do |hit|
-      doc_type = hit[SOURCE][TYPE].as_s
-      doc_type == @type ? hit[ID].as_s : nil
+    # Response is not JSON, the elastic lib should probably fix this...
+    if result.is_a?(String)
+      return {total: 0, results: [] of T}
     end
 
-    records = {{ @type.id }}.find_all(ids)
+    # FIXME: to_a converts lazy iterator to a strict array
+    raw_records = get_records(result).to_a
+    records = raw_records.compact_map { |r| yield r }
+    total = result_total(result: results, builder: builder, records: records, raw: raw_records)
 
-    results = block_given? ? (records.map { |record| yield record }).compact : records
-
-    # Ensure the total is accurate
-    total = result[HITS][TOTAL]? || 0
-    total = total - (records.length - results.length) # adjust for compaction
-
-    # We check records against limit (pre-compaction) and total against actual result length
-    # Worst case senario is there is one additional request for results at an offset that returns no results.
-    # The total results number will be accurate on the final page of results from the clients perspective.
-    total = results.length + builder.offset if records.length < builder.limit && total > (results.length + builder.offset)
     {
       total:   total,
       results: results,
     }
   end
 
-  # Reopened and defined in the module index
-  def find_all(ids)
-    raise "undefined"
+  # Query elasticsearch with a query builder object
+  def search(builder)
+    query = generate_body(builder)
+
+    result = client.search(query.to_h)
+    # Response is not JSON, the elastic lib should probably fix this...
+    if result.is_a?(String)
+      return {total: 0, results: [] of T}
+    end
+
+    # FIXME: to_a converts lazy iterator to a strict array
+    records = get_records(result).to_a
+    total = result_total(result: result, builder: builder, records: records)
+
+    {
+      total:   total,
+      results: records,
+    }
+  end
+
+  # Ensures the results total is accurate
+  private def result_total(result, builder, records, raw = nil)
+    pp! result
+    total = result[HITS][TOTAL]?.try(&.as_i) || 0
+
+    records_size = records.size
+    raw_size = raw.try(&.size) || records_size
+
+    total = total - (records_size - raw_size) # adjust for compaction
+
+    offset = builder.offset
+    limit = builder.limit
+
+    # We check records against limit (pre-compaction) and total against actual result length
+    # Worst case senario is there is one additional request for results at an offset that returns no results.
+    # The total results number will be accurate on the final page of results from the clients perspective.
+    total = records_size + offset if raw_size < limit && total > (offset + records_size)
+    total
+  end
+
+  # Filters off results that do not match the document type.
+  # Returns a collection of records pulled in from the db.
+  private def get_records(result)
+    ids = result.dig?(HITS, HITS).try(&.as_a.compact_map { |hit|
+      doc_type = hit[SOURCE][TYPE].as_s
+      doc_type == @type ? hit[ID].as_s : nil
+    })
+    ids ? T.find_all(ids) : [] of T
   end
 
   def count(builder)
@@ -88,16 +133,9 @@ class Neuroplastic::Elastic
     # Allow override of index for parent queries
     index = builder.parent || @index
 
+    queries = opt[:query]
     sort = (opt[:sort]? || [] of Array(String)) + SCORE
-
-    queries = opt[:queries]? || [] of String
-    queries.unshift(opt[:query])
-
     filters = opt[:filters]? || [] of Hash(String, String)
-
-    unless @filter.nil?
-      filters.unshift({type: {value: @filter}})
-    end
 
     {
       index: index,

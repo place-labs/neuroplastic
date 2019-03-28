@@ -5,7 +5,7 @@ class Neuroplastic::Query
                     },
                   }]
 
-  setter :offset, :limit, :sort, :fields, :query_settings
+  property :offset, :limit, :sort, :fields, :query_settings
 
   @query_settings : Hash(String, String)?
   @sort = DEFAULT_SORT

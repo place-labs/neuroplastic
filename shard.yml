@@ -8,15 +8,15 @@ dependencies:
   rethinkdb-orm:
     github: spider-gazelle/rethinkdb-orm
 
-  elasticsearch-crystal:
-    github: paktek123/elasticsearch-crystal
-
 development_dependencies:
   ameba:
     github: veelenga/ameba
 
   rubber-soul:
     github: aca-labs/rubber-soul
+
+  elasticsearch-crystal:
+    github: paktek123/elasticsearch-crystal
 
 crystal: 0.27.2
 license: MIT

@@ -8,7 +8,7 @@ class Neuroplastic::Query
   property :offset, :limit, :sort, :fields, :query_settings
 
   @query_settings : Hash(String, String)?
-  @sort = DEFAULT_SORT
+  @sort = [] of Hash(String, NamedTuple(order: Symbol))
 
   def initialize(params = {} of Symbol => String)
     @fields = ["_all"]

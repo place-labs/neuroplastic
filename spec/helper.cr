@@ -9,6 +9,7 @@ require "../src/neuroplastic/*"
 
 # spec models
 ####################################################################################################
+
 class Base < RethinkORM::Base
   include Neuroplastic
 end

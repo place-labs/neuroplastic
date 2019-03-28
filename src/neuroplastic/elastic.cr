@@ -18,9 +18,11 @@ class Neuroplastic::Elastic(T)
     @index = index unless index.nil?
   end
 
+  @@client : Neuroplastic::Client | Nil
+
   # Yields the elastic search client
   def client
-    Neuroplastic::Client.client
+    @@client ||= Neuroplastic::Client.new
   end
 
   # Performs search with elastic client
@@ -50,11 +52,6 @@ class Neuroplastic::Elastic(T)
     query = generate_body(builder)
     result = client.search(query.to_h)
 
-    # Response is not JSON, the elastic lib should probably fix this...
-    if result.is_a?(String)
-      return {total: 0, results: [] of T}
-    end
-
     # FIXME: to_a converts lazy iterator to a strict array
     raw_records = get_records(result).to_a
     records = raw_records.compact_map { |r| yield r }
@@ -69,12 +66,7 @@ class Neuroplastic::Elastic(T)
   # Query elasticsearch with a query builder object
   def search(builder)
     query = generate_body(builder)
-
     result = client.search(query.to_h)
-    # Response is not JSON, the elastic lib should probably fix this...
-    if result.is_a?(String)
-      return {total: 0, results: [] of T}
-    end
 
     # FIXME: to_a converts lazy iterator to a strict array
     records = get_records(result).to_a
@@ -157,8 +149,8 @@ class Neuroplastic::Elastic(T)
             },
           },
         },
-        from: opt[:offset],
-        size: opt[:limit],
+        # from: opt[:offset],
+        # size: opt[:limit],
       },
     }
   end

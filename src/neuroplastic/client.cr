@@ -4,6 +4,8 @@ require "http"
 require "./error"
 
 class Neuroplastic::Client
+  forward_missing_to missing
+
   # Settings for elastic client
   Habitat.create do
     setting host : String = ENV["ES_HOST"]? || "127.0.0.1"
@@ -97,7 +99,6 @@ class Neuroplastic::Client
   end
 
   def perform_request(method, path, params = nil, body = nil)
-    pp! body
     post_body = body.try(&.to_json)
     case method
     when "GET"

@@ -25,62 +25,91 @@ class Neuroplastic::Elastic(T)
     @@client ||= Neuroplastic::Client.new
   end
 
-  # Performs search with elastic client
-  def search(*args)
-    client.search *args
-  end
-
-  # Performs count search with elastic client
-  def count(*args)
-    client.count *args
-  end
-
   # Safely build the query
   def query(params = {} of Symbol => String, filters = nil)
     builder = Query.new(params)
-    builder.filter(filters) if filters
+    builder.filter(filters) unless filters.nil?
 
     builder
   end
 
-  # FIXME: Code duplication across #search
+  def count(builder)
+    query = generate_body(builder)
 
-  # Query elasticsearch with a query builder object, accepts a formatter block
-  # Allows annotation/conversion of records using data from the model.
-  # Nils are removed from the list.
-  def search(builder, &block)
+    # Simplify the query
+    query[:body].delete(:from)
+    query[:body].delete(:size)
+    query[:body].delete(:sort)
+
+    client.count(query)[COUNT]
+  end
+
+  # FIXME: Code duplication across #search
+  # alias FormatBlock = Proc(T, (T | Nil))
+
+  # # Query elasticsearch with a query builder object, accepts a formatter block
+  # # Allows annotation/conversion of records using data from the model.
+  # # Nils are removed from the list.
+  # def search(builder, &block)
+  #   query = generate_body(builder)
+  #   result = client.search(query.to_h)
+
+  #   # FIXME: to_a converts lazy iterator to a strict array
+  #   raw_records = get_records(result).to_a
+
+  #   records = raw_records.compact_map { |r| yield r }
+  #   total = result_total(result: results, builder: builder, records: records, raw: raw_records)
+
+  #   {
+  #     total:   total,
+  #     results: results,
+  #   }
+  # end
+
+  # Query elasticsearch with a query builder object
+  def search(builder)
+    _search(builder)
+  end
+
+  # Query elasticsearch with a query builder object, and optional format block
+  def search(builder, &block : Proc(T, (T | Nil)))
+    _search(builder, block)
+  end
+
+  # private def _search(builder, block : FormatBlock? = nil)
+  private def _search(builder, block = nil)
     query = generate_body(builder)
     result = client.search(query.to_h)
 
     # FIXME: to_a converts lazy iterator to a strict array
     raw_records = get_records(result).to_a
-    records = raw_records.compact_map { |r| yield r }
-    total = result_total(result: results, builder: builder, records: records, raw: raw_records)
 
-    {
-      total:   total,
-      results: results,
-    }
-  end
+    records = block ? raw_records.compact_map { |r| block.call r } : raw_records
 
-  # Query elasticsearch with a query builder object
-  def search(builder)
-    query = generate_body(builder)
-    result = client.search(query.to_h)
-
-    # FIXME: to_a converts lazy iterator to a strict array
-    records = get_records(result).to_a
-    total = result_total(result: result, builder: builder, records: records)
-
+    total = result_total(result: result, builder: builder, records: records, raw: raw_records)
     {
       total:   total,
       results: records,
     }
   end
 
+  # # Query elasticsearch with a query builder object
+  # def search(builder)
+  #   query = generate_body(builder)
+  #   result = client.search(query.to_h)
+
+  #   # FIXME: to_a converts lazy iterator to a strict array
+  #   records = get_records(result).to_a
+  #   total = result_total(result: result, builder: builder, records: records)
+
+  #   {
+  #     total:   total,
+  #     results: records,
+  #   }
+  # end
+
   # Ensures the results total is accurate
   private def result_total(result, builder, records, raw = nil)
-    pp! result
     total = result[HITS][TOTAL]?.try(&.as_i) || 0
 
     records_size = records.size
@@ -108,17 +137,6 @@ class Neuroplastic::Elastic(T)
     ids ? T.find_all(ids) : [] of T
   end
 
-  def count(builder)
-    query = generate_body(builder)
-
-    # Simplify the query
-    query[:body].delete(:from)
-    query[:body].delete(:size)
-    query[:body].delete(:sort)
-
-    self.count(query)[COUNT]
-  end
-
   def generate_body(builder)
     opt = builder.build
 
@@ -132,16 +150,9 @@ class Neuroplastic::Elastic(T)
     {
       index: index,
       body:  {
-        sort:  sort,
         query: {
           bool: {
-            must: {
-              query: {
-                bool: {
-                  must: queries,
-                },
-              },
-            },
+            must:   queries,
             filter: {
               bool: {
                 must: filters,
@@ -149,8 +160,9 @@ class Neuroplastic::Elastic(T)
             },
           },
         },
-        # from: opt[:offset],
-        # size: opt[:limit],
+        sort: sort,
+        from: opt[:offset],
+        size: opt[:limit],
       },
     }
   end

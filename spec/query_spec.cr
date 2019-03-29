@@ -5,6 +5,5 @@ describe Neuroplastic::Query do
     elastic = Basic.elastic
     query_body = elastic.query.build
     query_body.keys.should eq ({:query, :sort, :filters, :offset, :limit})
-    pp! query_body
   end
 end

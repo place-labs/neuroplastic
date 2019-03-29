@@ -33,50 +33,28 @@ class Neuroplastic::Elastic(T)
     builder
   end
 
+  # Performs a count query against an index
   def count(builder)
     query = generate_body(builder)
 
     # Simplify the query
-    query[:body].delete(:from)
-    query[:body].delete(:size)
-    query[:body].delete(:sort)
-
-    client.count(query)[COUNT]
+    body = query[:body].to_h.reject(:from, :size, :sort)
+    simplified = query.merge({body: body})
+    client.count(simplified)[COUNT].as_i
   end
-
-  # FIXME: Code duplication across #search
-  # alias FormatBlock = Proc(T, (T | Nil))
-
-  # # Query elasticsearch with a query builder object, accepts a formatter block
-  # # Allows annotation/conversion of records using data from the model.
-  # # Nils are removed from the list.
-  # def search(builder, &block)
-  #   query = generate_body(builder)
-  #   result = client.search(query.to_h)
-
-  #   # FIXME: to_a converts lazy iterator to a strict array
-  #   raw_records = get_records(result).to_a
-
-  #   records = raw_records.compact_map { |r| yield r }
-  #   total = result_total(result: results, builder: builder, records: records, raw: raw_records)
-
-  #   {
-  #     total:   total,
-  #     results: results,
-  #   }
-  # end
 
   # Query elasticsearch with a query builder object
   def search(builder)
     _search(builder)
   end
 
-  # Query elasticsearch with a query builder object, and optional format block
+  # Query elasticsearch with a query builder object, accepts a formatter block
+  # Allows annotation/conversion of records using data from the model.
+  # Nils are removed from the list.
   def search(builder, &block : Proc(T, (T | Nil)))
     _search(builder, block)
   end
 
-  # private def _search(builder, block : FormatBlock? = nil)
   private def _search(builder, block = nil)
     query = generate_body(builder)
     result = client.search(query.to_h)
@@ -92,21 +70,6 @@ class Neuroplastic::Elastic(T)
       results: records,
     }
   end
-
-  # # Query elasticsearch with a query builder object
-  # def search(builder)
-  #   query = generate_body(builder)
-  #   result = client.search(query.to_h)
-
-  #   # FIXME: to_a converts lazy iterator to a strict array
-  #   records = get_records(result).to_a
-  #   total = result_total(result: result, builder: builder, records: records)
-
-  #   {
-  #     total:   total,
-  #     results: records,
-  #   }
-  # end
 
   # Ensures the results total is accurate
   private def result_total(result, builder, records, raw = nil)

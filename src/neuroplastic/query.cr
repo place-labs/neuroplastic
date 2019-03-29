@@ -1,4 +1,5 @@
 class Neuroplastic::Query
+  # Default sort from Engine, currently unused
   DEFAULT_SORT = [{
                     "doc.created_at" => {
                       order: :desc,

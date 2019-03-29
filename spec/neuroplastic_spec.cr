@@ -1,7 +1,13 @@
 require "./helper"
 
 describe Neuroplastic::Elastic do
-  pending "#count" do
+  describe "#count" do
+    it "performs a count query on an index" do
+      recreate_index(Basic.table_name)
+      query = Basic.elastic.query
+      count = Basic.elastic.count(query)
+      count.should eq 0
+    end
   end
 
   describe "#search" do

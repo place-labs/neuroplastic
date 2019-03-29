@@ -4,16 +4,10 @@ require "http"
 require "./error"
 
 class Neuroplastic::Client
-  forward_missing_to missing
-
   # Settings for elastic client
   Habitat.create do
     setting host : String = ENV["ES_HOST"]? || "127.0.0.1"
     setting port : Int32 = ENV["ES_PORT"]?.try(&.to_i) || 9200
-  end
-
-  private def missing
-    raise Error::ElasticQueryError.new("Unimplemented ES method")
   end
 
   @@client : HTTP::Client | Nil
@@ -26,7 +20,6 @@ class Neuroplastic::Client
   end
 
   def search(arguments = {} of Symbol => String) : JSON::Any
-    index = arguments[:index]? || "_all"
     valid_params = [
       :analyzer,
       :analyze_wildcard,
@@ -70,10 +63,10 @@ class Neuroplastic::Client
       :batched_reduce_size,
     ]
 
-    # Pull out relevant arguments
+    index = arguments[:index]? || "_all"
+    path = "/#{index}/_search"
+    method = "POST"
     body = arguments[:body]?
-
-    # Extract valid params
     params = arguments.to_h.select(valid_params)
 
     fields = arguments[:fields]?
@@ -88,37 +81,63 @@ class Neuroplastic::Client
       params[:fielddata_fields] = fielddata_fields.map(&.to_s).join(',')
     end
 
-    path = "/#{index}/_search"
-    response = perform_request(method: "POST", path: path, params: params, body: body)
+    perform_request(method: method, path: path, params: params, body: body)
+  end
+
+  def count(arguments = {} of Symbol => String)
+    valid_params = [
+      :ignore_unavailable,
+      :allow_no_indices,
+      :expand_wildcards,
+      :min_score,
+      :preference,
+      :routing,
+      :q,
+      :analyzer,
+      :analyze_wildcard,
+      :default_operator,
+      :df,
+      :lenient,
+      :lowercase_expanded_terms,
+    ]
+
+    index = arguments[:index]? || "_all"
+    index = index.join(',') if index.is_a?(Array(String))
+    path = "/#{index}/_count"
+    method = "GET"
+    body = arguments[:body]?
+    params = arguments.to_h.select(valid_params)
+
+    perform_request(method: method, path: path, params: params, body: body)
+  end
+
+  def perform_request(method, path, params = nil, body = nil)
+    post_body = body.try(&.to_json)
+    response = case method
+               when "GET"
+                 endpoint = "#{path}?#{normalize_params(params)}"
+                 if post_body
+                   client.get(path: endpoint, body: post_body, headers: json_header)
+                 else
+                   client.get(path: endpoint)
+                 end
+               when "POST"
+                 client.post(path: path, body: post_body, headers: json_header)
+               when "PUT"
+                 client.put(path: path, body: post_body, headers: json_header)
+               when "DELETE"
+                 endpoint = "#{path}?#{normalize_params(params)}"
+                 client.delete(path: endpoint)
+               when "HEAD"
+                 client.head(path: path)
+               else
+                 raise "Niche header..."
+               end
 
     if response.success?
       JSON.parse(response.body)
     else
       raise Error::ElasticQueryError.new("ES error: #{response.status_code}\n#{response.body}")
-    end
-  end
-
-  def perform_request(method, path, params = nil, body = nil)
-    post_body = body.try(&.to_json)
-    case method
-    when "GET"
-      endpoint = "#{path}?#{normalize_params(params)}"
-      if post_body
-        client.get(path: endpoint, body: post_body, headers: json_header)
-      else
-        client.get(path: endpoint)
-      end
-    when "POST"
-      client.post(path: path, body: post_body, headers: json_header)
-    when "PUT"
-      client.put(path: path, body: post_body, headers: json_header)
-    when "DELETE"
-      endpoint = "#{path}?#{normalize_params(params)}"
-      client.delete(path: endpoint)
-    when "HEAD"
-      client.head(path: path)
-    else
-      raise "Niche header..."
     end
   end
 

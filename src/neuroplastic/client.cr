@@ -135,7 +135,8 @@ class Neuroplastic::Client
                end
 
     if response.success?
-      JSON.parse(response.body)
+      r = JSON.parse(response.body)
+      r
     else
       raise Error::ElasticQueryError.new("ES error: #{response.status_code}\n#{response.body}")
     end

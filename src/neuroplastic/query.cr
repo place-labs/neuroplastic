@@ -32,22 +32,26 @@ class Neuroplastic::Query
 
   def search_field(field)
     @fields.unshift(field)
+    self
   end
 
   @child : String | Nil
+  @parent : String | Nil
+  @index : String | Nil
+  getter :child, :parent, :index
 
   # Applys the query to child objects
-  def has_child(name)
-    @child = name
+  def has_child(child : Class)
+    @child = child.name
+    self
   end
-
-  @parent : String | Nil
-  getter :parent
 
   # has_parent query
   # - Set the index to the parent, check first that the class is actually a parent of the model
-  def has_parent(name)
-    @parent = name
+  def has_parent(parent : Class, parent_index : String)
+    @parent = parent.name
+    @index = parent_index
+    self
   end
 
   # filters is in the form {fieldname1: ["var1","var2",...], fieldname2: ["var1","var2"...]}

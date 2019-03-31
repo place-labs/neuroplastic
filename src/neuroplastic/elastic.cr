@@ -59,9 +59,7 @@ class Neuroplastic::Elastic(T)
     query = generate_body(builder)
     result = client.search(query.to_h)
 
-    # FIXME: to_a converts lazy iterator to a strict array
     raw_records = get_records(result).to_a
-
     records = block ? raw_records.compact_map { |r| block.call r } : raw_records
 
     total = result_total(result: result, builder: builder, records: records, raw: raw_records)
@@ -103,12 +101,10 @@ class Neuroplastic::Elastic(T)
   def generate_body(builder)
     opt = builder.build
 
-    # Allow override of index for parent queries
-    index = builder.parent || @index
-
     queries = opt[:query]
     sort = (opt[:sort]? || [] of Array(String)) + SCORE
     filters = opt[:filters]? || [] of Hash(String, String)
+    index = builder.index || @index
 
     {
       index: index,

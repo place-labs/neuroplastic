@@ -1,63 +1,51 @@
 require "spec"
 
-require "elasticsearch-crystal/elasticsearch/api"
-require "rethinkdb-orm"
-require "rubber-soul"
-
 require "../src/neuroplastic"
 require "../src/neuroplastic/*"
 
-# spec models
-####################################################################################################
-
-class Base < RethinkORM::Base
-  include Neuroplastic
-end
-
-class Basic < Base
-  attribute name : String
-end
-
-class Parent < Base
-  attribute name : String
-end
-
-class Child < Base
-  attribute age : Int32
-  belongs_to Parent
-end
+require "./spec_models"
+require "rubber-soul/rubber-soul/table_manager"
 
 # ES
 ####################################################################################################
 
-macro indices(models)
-  [
-  {% for model in models %}
-  {{ model.id }}.table_name,
-  {% end %}
-  ]
-end
+MODELS = [Basic, Goat, Kid]
+TM     = RubberSoul::TableManager.new(MODELS, watch: false, backfill: false)
 
-INDICES = indices([Basic, Parent, Child])
-CLIENT  = Elasticsearch::API::Client.new({:host => "localhost", :port => 9200})
-
-def recreate_index(index)
-  CLIENT.indices.delete({:index => index})
-  CLIENT.indices.create({:index => index})
-end
+CLIENT = Elasticsearch::API::Client.new({:host => "localhost", :port => 9200})
 
 def recreate_test_indices
-  INDICES.each do |i|
-    recreate_index(i)
+  MODELS.each do |i|
+    TM.reindex(i.name)
   end
 end
 
-def create_es_data(index, body, routing)
-  CLIENT.create({
-    :type  => "_doc",
-    :index => index,
-    :body  => body,
-  })
+# Creates a random parent child across the child and parent indices
+def create_parent_child
+  parent = Goat.create(name: "bill the #{Random.rand(100)}th")
+  child = Kid.new(age: Random.rand(18), hoof_treatment: "CuSO4")
+  child.goat = parent
+  child.save
+
+  parent_name = Goat.name
+  child_name = Kid.name
+  parent_index = Goat.table_name
+  child_index = Kid.table_name
+
+  RubberSoul::Elastic.save_document(
+    document: parent,
+    index: parent_index,
+    parents: TM.parents(parent_name),
+    children: TM.children(parent_name)
+  )
+
+  RubberSoul::Elastic.save_document(
+    document: child,
+    index: child_index,
+    parents: TM.parents(child_name),
+    children: TM.children(child_name)
+  )
 end
 
 recreate_test_indices
+create_parent_child

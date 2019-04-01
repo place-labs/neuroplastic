@@ -27,7 +27,7 @@ class Model < RethinkORM::Base
 end
 
 # Construct a query
-query = Model.elastic.query.raw_filter({"name": "bill"}) 
+query = Model.elastic.query.filter({"name": "bill"})
 
 # Dump the query object
 puts query.build

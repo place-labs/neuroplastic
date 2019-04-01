@@ -24,12 +24,6 @@ class Neuroplastic::Query
     @offset = 10000 if @offset > 10000
   end
 
-  def raw_filter(filter)
-    @raw_filter ||= [] of String
-    @raw_filter << filter
-    self
-  end
-
   def search_field(field)
     @fields.unshift(field)
     self
@@ -47,36 +41,43 @@ class Neuroplastic::Query
   end
 
   # has_parent query
-  # - Set the index to the parent, check first that the class is actually a parent of the model
+  # Sets the index to the parent
+  # TODO: Check first that the class is actually a parent of the model
   def has_parent(parent : Class, parent_index : String)
     @parent = parent.name
     @index = parent_index
     self
   end
 
-  # filters is in the form {fieldname1: ["var1","var2",...], fieldname2: ["var1","var2"...]}
-  # NOTE: may overwrite an existing filter in merge
   def filter(filters)
     @filters.merge!(filters)
     self
   end
 
-  # Like filter however all keys are OR's instead of AND's
-  def or_filter(filters)
-    @or_filter ||= {} of Symbol => Array(String)
-    @or_filter.merge!(filters)
+  # Like filter, but at least one should match in absence of `filter`/`must` hits
+  def should(filters)
+    @should ||= {} of Symbol => Array(String)
+    @should.merge!(filters)
     self
   end
 
-  def and_filter(filters)
-    @and_filter ||= {} of Symbol => Array(String)
-    @and_filter.merge!(filters)
+  # Like filter, but all hits must match each filter
+  def must(filters)
+    @must ||= {} of Symbol => Array(String)
+    @must.merge!(filters)
+    self
+  end
+
+  # The opposite of filter, essentially a not
+  def must_not(filters)
+    @must_not ||= {} of Symbol => Array(String)
+    @must_not.merge!(filters)
     self
   end
 
   def range(filter)
-    @range_filter ||= [] of Hash(String, String)
-    @range_filter << filter
+    @range ||= [] of Hash(Symbol, Hash(String, String | Int32 | Float32))
+    @range << filter
     self
   end
 
@@ -88,13 +89,6 @@ class Neuroplastic::Query
     self
   end
 
-  # The opposite of filter
-  def not(filters)
-    @nots ||= {} of Symbol => Array(String)
-    @nots.merge!(filters)
-    self
-  end
-
   def exists(*fields)
     @exists ||= Set(String).new
     @exists.concat(fields)
@@ -102,26 +96,20 @@ class Neuroplastic::Query
   end
 
   def build
-    filters = build_filters
-    if @search.size > 1
-      {
-        query:   build_query,
-        filters: filters,
-        offset:  @offset,
-        limit:   @limit,
-      }
-    else
-      {
-        query:   {match_all: {} of Symbol => String},
-        sort:    @sort,
-        filters: filters,
-        offset:  @offset,
-        limit:   @limit,
-      }
-    end
+    {
+      query:  build_query,
+      filter: build_filter,
+      offset: @offset,
+      limit:  @limit,
+      sort:   @sort,
+    }
   end
 
+  # Generates a bool field in the query context
   protected def build_query
+    # Query all documents if no search term
+    return {must: {match_all: {} of Symbol => String}} unless @search.size > 1
+
     base_query = {
       :simple_query_string => {
         query:  @search,
@@ -137,12 +125,12 @@ class Neuroplastic::Query
       # Generate should field
       should = [query, parent_query, child_query].compact
       {
-        bool: {
-          should: should,
-        },
+        should: should,
       }
     else
-      base_query
+      {
+        must: base_query,
+      }
     end
   end
 
@@ -178,42 +166,40 @@ class Neuroplastic::Query
     end
   end
 
-  protected def build_filters
-    filters_field = @filters.try { |f| build_field_filter(f, :or) }
-    or_filter_field = @or_filter.try { |f| build_field_filter(f, :or) }
-    and_filter_field = @and_filter.try { |f| build_field_filter(f, :and) }
+  # Construct a filter field
+  protected def build_filter
+    filters = @filters.try { |f| build_field_filter(f) }
+    range = @range.try(&.map { |value| {range: value} })
+    missing = @missing.try(&.map { |field| {missing: {field: field}} })
+    exists = @exists.try(&.map { |field| {exists: {field: field}} })
 
-    not_filter_field = @nots.try do |nots|
-      field_filter = build_field_filter(nots, :or)
-      field_filter.try { |f| {not: {filter: f}} }
-    end
+    # Combine filters, remove nils and flatten a single level
+    filters = [filters, range, missing, exists].compact.flatten
+    should = @should.try { |f| build_field_filter(f) }
+    must = @must.try { |f| build_field_filter(f) }
+    must_not = @must_not.try { |f| build_field_filter(f) }
 
-    range_filter_field = @range_filter.try(&.map { |value| {range: value} })
-    missing_field_filter = @missing.try(&.map { |field| {missing: {field: field}} })
-    exists_field_filter = @exists.try(&.map { |field| {exists: {field: field}} })
+    bool = {
+      :filter   => filters,
+      :must     => must,
+      :must_not => must_not,
+      :should   => should,
+    }.compact!
 
-    # Extremely heterogenous array..
-    # This method allows easier construction through automatic typing
-    [
-      filters_field,
-      or_filter_field,
-      and_filter_field,
-      not_filter_field,
-      range_filter_field,
-      missing_field_filter,
-      exists_field_filter,
-    ].compact.flatten
+    {
+      bool: bool,
+    }
   end
 
   # Generate filter field
-  protected def build_field_filter(filters, field : Symbol)
+  protected def build_field_filter(filters)
     return nil if filters.nil?
 
     field_filter = filters.flat_map do |key, value|
       build_sub_filter(key, value)
     end
 
-    field_filter.empty? ? nil : {field => field_filter}
+    field_filter.empty? ? nil : field_filter
   end
 
   # Generate a sub filter

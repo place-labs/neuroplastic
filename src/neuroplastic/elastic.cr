@@ -11,7 +11,7 @@ class Neuroplastic::Elastic(T)
   @index : String = T.table_name
 
   # Document type defaults to class name without namespace
-  @type : String = T.class.name.split("::").last
+  @type : String = T.name.split("::").last
 
   def initialize(index : String? = nil, type : String? = nil)
     @type = type unless type.nil?
@@ -95,33 +95,26 @@ class Neuroplastic::Elastic(T)
       doc_type = hit[SOURCE][TYPE].as_s
       doc_type == @type ? hit[ID].as_s : nil
     })
+
     ids ? T.find_all(ids) : [] of T
   end
 
   def generate_body(builder)
     opt = builder.build
 
-    queries = opt[:query]
+    query = opt[:query]
     sort = (opt[:sort]? || [] of Array(String)) + SCORE
-    filters = opt[:filters]? || [] of Hash(String, String)
+    filter = opt[:filter]? || [] of Hash(String, String)
     index = builder.index || @index
+    query_context = {bool: query.merge({filter: filter})}
 
     {
       index: index,
       body:  {
-        query: {
-          bool: {
-            must:   queries,
-            filter: {
-              bool: {
-                must: filters,
-              },
-            },
-          },
-        },
-        sort: sort,
-        from: opt[:offset],
-        size: opt[:limit],
+        query: query_context,
+        sort:  sort,
+        from:  opt[:offset],
+        size:  opt[:limit],
       },
     }
   end

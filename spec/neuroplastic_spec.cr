@@ -31,14 +31,16 @@ describe Neuroplastic::Elastic do
   describe "relations" do
     it "#query.has_parent performs a has_parent query against the parent index" do
       query = Kid.elastic.query({q: "bill"}).has_parent(parent: Goat, parent_index: Goat.table_name)
-      result = Kid.elastic.search(query)
-      # pp! result
+      records = Kid.elastic.search(query)
+      records[:total].should eq 1
+      records[:results].size.should eq 1
     end
 
     it "#query.has_child performs a has_child query" do
       query = Goat.elastic.query({q: "cuso4"}).has_child(child: Kid)
-      result = Goat.elastic.search(query)
-      # pp! result
+      records = Goat.elastic.search(query)
+      records[:total].should eq 1
+      records[:results].size.should eq 1
     end
   end
 end

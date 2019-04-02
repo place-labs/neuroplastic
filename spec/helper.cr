@@ -55,7 +55,16 @@ def create_basic
   )
 end
 
+def create_base
+  base = Base.create!
+  RubberSoul::Elastic.save_document(
+    document: base,
+    index: Base.table_name,
+  )
+end
+
 recreate_test_indices
 create_parent_child
 create_basic
+create_base
 sleep 1

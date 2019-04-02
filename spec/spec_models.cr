@@ -4,18 +4,24 @@ require "../neuroplastic"
 # Spec models
 ####################################################################################################
 
-class Basic < RethinkORM::Base
+abstract class AbstractBase < RethinkORM::Base
   include Neuroplastic
+end
+
+class Base < RethinkORM::Base
+  include Neuroplastic
+  attribute owns : String = "all your bases"
+end
+
+class Basic < AbstractBase
   attribute name : String
 end
 
-class Goat < RethinkORM::Base
-  include Neuroplastic
+class Goat < AbstractBase
   attribute name : String
 end
 
-class Kid < RethinkORM::Base
-  include Neuroplastic
+class Kid < AbstractBase
   attribute age : Int32
   attribute hoof_treatment : String
   belongs_to Goat

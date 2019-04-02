@@ -3,8 +3,8 @@ require "./helper"
 describe Neuroplastic::Elastic do
   describe "#count" do
     it "performs a count query on an index" do
-      query = Basic.elastic.query
-      count = Basic.elastic.count(query)
+      query = Base.elastic.query
+      count = Base.elastic.count(query)
       count.should eq 1
     end
   end

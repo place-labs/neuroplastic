@@ -102,11 +102,15 @@ class Neuroplastic::Elastic(T)
   def generate_body(builder)
     opt = builder.build
 
-    query = opt[:query]
-    sort = (opt[:sort]? || [] of Array(String)) + SCORE
-    filter = opt[:filter]? || [] of Hash(String, String)
     index = builder.index || @index
-    query_context = {bool: query.merge({filter: filter})}
+    query = opt[:query]
+    filter = opt[:filter]
+    sort = (opt[:sort]? || [] of Array(String)) + SCORE
+
+    # Only merge in filter if it contains fields
+    query_context = {
+      bool: filter ? query.merge({filter: filter}) : query,
+    }
 
     {
       index: index,

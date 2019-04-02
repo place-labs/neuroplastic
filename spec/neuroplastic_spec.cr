@@ -3,28 +3,31 @@ require "./helper"
 describe Neuroplastic::Elastic do
   describe "#count" do
     it "performs a count query on an index" do
-      TM.reindex(Basic.name)
       query = Basic.elastic.query
       count = Basic.elastic.count(query)
-      count.should eq 0
+      count.should eq 1
     end
   end
 
   describe "#search" do
     it "performs a generic search" do
-      TM.reindex(Basic.name)
       query = Basic.elastic.query
       records = Basic.elastic.search(query)
-      records[:total].should eq 0
-      records[:results].size.should eq 0
+      records[:total].should eq 1
+      records[:results].size.should eq 1
     end
 
     it "accepts a format block" do
-      TM.reindex(Basic.name)
       query = Basic.elastic.query
-      records = Basic.elastic.search(query) { |r| r }
-      records[:total].should eq 0
-      records[:results].size.should eq 0
+      updated_name = "Ugg"
+      records = Basic.elastic.search(query) do |r|
+        r.name = updated_name
+        r
+      end
+
+      records[:total].should eq 1
+      records[:results].size.should eq 1
+      records[:results][0].name.should eq updated_name
     end
   end
 

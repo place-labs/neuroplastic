@@ -47,5 +47,15 @@ def create_parent_child
   )
 end
 
+def create_basic
+  basic = Basic.create!(name: {"Kim", "Kylie", "Kendall"}.sample)
+  RubberSoul::Elastic.save_document(
+    document: basic,
+    index: Basic.table_name,
+  )
+end
+
 recreate_test_indices
 create_parent_child
+create_basic
+sleep 1

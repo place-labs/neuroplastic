@@ -175,10 +175,12 @@ class Neuroplastic::Query
 
     # Combine filters, remove nils and flatten a single level
     filters = [filters, range, missing, exists].compact.flatten
+    filters = nil if filters.empty?
     should = @should.try { |f| build_field_filter(f) }
     must = @must.try { |f| build_field_filter(f) }
     must_not = @must_not.try { |f| build_field_filter(f) }
 
+    # Construct bool field, remove nil keys
     bool = {
       :filter   => filters,
       :must     => must,
@@ -186,9 +188,7 @@ class Neuroplastic::Query
       :should   => should,
     }.compact!
 
-    {
-      bool: bool,
-    }
+    {bool: bool}
   end
 
   # Generate filter field

@@ -1,10 +1,10 @@
 class Neuroplastic::Query
   # Default sort from Engine, currently unused
   DEFAULT_SORT = [{
-                    "doc.created_at" => {
-                      order: :desc,
-                    },
-                  }]
+    "doc.created_at" => {
+      order: :desc,
+    },
+  }]
 
   property :offset, :limit, :sort, :fields, :query_settings
 
@@ -50,28 +50,28 @@ class Neuroplastic::Query
   end
 
   def filter(filters)
-    @filters.merge!(filters)
+    @filters.merge(filters)
     self
   end
 
   # Like filter, but at least one should match in absence of `filter`/`must` hits
   def should(filters)
     @should ||= {} of Symbol => Array(String)
-    @should.merge!(filters)
+    @should.merge(filters)
     self
   end
 
   # Like filter, but all hits must match each filter
   def must(filters)
     @must ||= {} of Symbol => Array(String)
-    @must.merge!(filters)
+    @must.merge(filters)
     self
   end
 
   # The opposite of filter, essentially a not
   def must_not(filters)
     @must_not ||= {} of Symbol => Array(String)
-    @must_not.merge!(filters)
+    @must_not.merge(filters)
     self
   end
 

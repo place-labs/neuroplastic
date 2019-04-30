@@ -1,11 +1,13 @@
 class Neuroplastic::Elastic(T)
   COUNT  = "count"
-  HITS   = "hits"
-  TOTAL  = "total"
   SCORE  = ["_score"]
   ID     = "_id"
   SOURCE = "_source"
   TYPE   = "type"
+
+  HITS  = "hits"
+  TOTAL = "total"
+  VALUE = "value"
 
   # Index defaults to rethinkdb table name
   @index : String = T.table_name
@@ -71,7 +73,7 @@ class Neuroplastic::Elastic(T)
 
   # Ensures the results total is accurate
   private def result_total(result, builder, records, raw = nil)
-    total = result[HITS][TOTAL]?.try(&.as_i) || 0
+    total = result.dig(HITS, TOTAL, VALUE).try(&.as_i) || 0
 
     records_size = records.size
     raw_size = raw.try(&.size) || records_size

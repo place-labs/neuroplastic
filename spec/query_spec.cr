@@ -6,20 +6,64 @@ describe Neuroplastic::Query do
     query_body.keys.should eq ({:query, :filter, :offset, :limit, :sort})
   end
 
-  it "#has_parent" do
-    parent_index = Goat.table_name
-    query = Kid.elastic.query({q: "some goat"}).has_parent(parent: Goat, parent_index: parent_index)
-    query_body = query.build[:query]
+  describe "asscociations" do
+    it "#has_parent" do
+      parent_index = Goat.table_name
+      query = Kid.elastic.query({q: "some goat"}).has_parent(parent: Goat, parent_index: parent_index)
+      query_body = query.build[:query]
 
-    query.parent.should eq Goat.name
-    query.index.should eq parent_index
-    JSON.parse(query_body.to_json).dig("should", 0, "has_parent", "parent_type").should eq Goat.name
+      query.parent.should eq Goat.name
+      query.index.should eq parent_index
+
+      JSON.parse(query_body.to_json).dig("should", 0, "has_parent", "parent_type").should eq Goat.name
+    end
+
+    it "#has_child" do
+      query = Goat.elastic.query({q: "some kid"}).has_child(child: Kid)
+      query_body = query.build[:query]
+
+      JSON.parse(query_body.to_json).dig("should", 0, "has_child", "type").should eq Kid.name
+    end
   end
 
-  it "#has_child" do
-    query = Goat.elastic.query({q: "some kid"}).has_child(child: Kid)
-    query_body = query.build[:query]
+  describe "filters" do
+    it "#should" do
+      query = Goat.elastic.query({q: "SCREAMS"})
+      teeth = [1, 3, 5, 7, 11]
 
-    JSON.parse(query_body.to_json).dig("should", 0, "has_child", "type").should eq Kid.name
+      query.should({"doc.teeth" => teeth})
+      filter_field = query.build[:filter]
+
+      expected = teeth.map { |t| ({:term => {"doc.teeth" => t}}) }
+      filter_field.dig(:bool, :should).should eq expected
+    end
+
+    it "#must" do
+      query = Goat.elastic.query({q: "stands on mountain"})
+      query.must({"doc.name" => ["billy"]})
+      filter_field = query.build[:filter]
+
+      filter_field.dig(:bool, :must).should eq [{:term => {"doc.name" => "billy"}}]
+    end
+
+    it "#must_not" do
+      query = Goat.elastic.query({q: "makes good cheese"})
+      query.must_not({"doc.name" => ["gruff"]})
+      filter_field = query.build[:filter]
+
+      filter_field.dig(:bool, :must_not).should eq [{:term => {"doc.name" => "gruff"}}]
+    end
+
+    pending "#range" do
+      query = Goat.elastic.query({q: "cheese time"})
+      query.range({
+        "doc.teeth" => {
+          :lte => 5,
+        },
+      })
+      filter_field = query.build[:filter]
+
+      pp! filter_field
+    end
   end
 end

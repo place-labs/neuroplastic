@@ -5,6 +5,9 @@ class Neuroplastic::Error < Exception
     super(message)
   end
 
+  class MalformedQuery < Error
+  end
+
   class ElasticQueryError < Error
   end
 end

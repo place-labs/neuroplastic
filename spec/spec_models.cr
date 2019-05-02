@@ -19,6 +19,8 @@ end
 
 class Goat < AbstractBase
   attribute name : String
+  attribute teeth : Int32
+  attribute job : String
 end
 
 class Kid < AbstractBase

@@ -1,3 +1,5 @@
+require "./client"
+
 class Neuroplastic::Elastic(T)
   COUNT  = "count"
   SCORE  = ["_score"]

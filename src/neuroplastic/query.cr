@@ -1,19 +1,13 @@
 module Neuroplastic
   class Query
-    # Default sort from Engine, currently unused
-    DEFAULT_SORT = [{
-      "doc.created_at" => {
-        order: :desc,
-      },
-    }]
-
+    alias Sort = Hash(String, NamedTuple(order: Symbol)) | String | Hash(String, String)
     alias FilterValue = Array(Int32) | Array(Float32) | Array(Bool) | Array(String) | Nil
     alias Filter = Hash(String, FilterValue)
 
     property :offset, :limit, :sort, :fields, :query_settings
 
     @query_settings : Hash(String, String)?
-    @sort = [] of Hash(String, NamedTuple(order: Symbol))
+    @sort = [] of Sort
 
     def initialize(params = {} of Symbol => String)
       @fields = ["_all"]
@@ -34,9 +28,9 @@ module Neuroplastic
       self
     end
 
-    @child : String | Nil
-    @parent : String | Nil
-    @index : String | Nil
+    @child : String?
+    @parent : String?
+    @index : String?
     getter :child, :parent, :index
 
     # Applys the query to child objects
@@ -86,12 +80,18 @@ module Neuroplastic
       self
     end
 
+    def sort(sort : Sort)
+      @sort << sort
+
+      self
+    end
+
     alias RangeQuery = Hash(String, Hash(Symbol, RangeValue))
     alias RangeValue = Int32 | Float32 | Bool | String
 
     RANGE_PARAMS = {:gte, :gt, :lte, :lt, :boost}
 
-    def range(filter : RangeQuery)
+    def range(filter)
       @range ||= RangeQuery.new
 
       invalid_args = filter.keys.reject do |k|

@@ -22,7 +22,7 @@ class Neuroplastic::Elastic(T)
     @index = index unless index.nil?
   end
 
-  @@client : Neuroplastic::Client | Nil
+  @@client : Neuroplastic::Client?
 
   # Yields the elastic search client
   def client
@@ -55,7 +55,7 @@ class Neuroplastic::Elastic(T)
   # Query elasticsearch with a query builder object, accepts a formatter block
   # Allows annotation/conversion of records using data from the model.
   # Nils are removed from the list.
-  def search(builder, &block : Proc(T, (T | Nil)))
+  def search(builder, &block : Proc(T, (T?)))
     _search(builder, block)
   end
 

@@ -10,7 +10,7 @@ class Neuroplastic::Client
     setting port : Int32 = ENV["ES_PORT"]?.try(&.to_i) || 9200
   end
 
-  @@client : HTTP::Client | Nil
+  @@client : HTTP::Client?
 
   def client
     @@client ||= HTTP::Client.new(

@@ -62,7 +62,6 @@ describe Neuroplastic::Query do
         },
       })
       filter_field = query.build[:filter]
-
       pp! filter_field
     end
   end

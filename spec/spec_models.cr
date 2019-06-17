@@ -1,5 +1,5 @@
 require "rethinkdb-orm"
-require "../neuroplastic"
+require "../src/neuroplastic"
 
 # Spec models
 ####################################################################################################

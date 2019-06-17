@@ -24,7 +24,6 @@ module Neuroplastic
 
     def search_field(field)
       @fields.unshift(field)
-
       self
     end
 
@@ -94,15 +93,24 @@ module Neuroplastic
     def range(filter)
       @range ||= RangeQuery.new
 
-      invalid_args = filter.keys.reject do |k|
+      invalid_args = filter.values.flat_map(&.keys).reject do |k|
         RANGE_PARAMS.includes? k
+      end
+
+      # Crystal fails to merge Hash(String, Int) into Hash(String, String | Int | etc)
+      # This transformation is necessary to satisfy the union type RangeValue.
+      # FIXME: potential efficiency savings here
+      transformed : RangeQuery = filter.transform_values do |filter_hash|
+        filter_hash.transform_values do |range_value|
+          range_value.as RangeValue
+        end
       end
 
       unless invalid_args.empty?
         raise Error::MalformedQuery.new("Invalid range query arguments: #{invalid_args.join(",")}")
       end
 
-      @range = @range.try &.merge(filter)
+      @range.try &.merge!(transformed)
 
       self
     end
@@ -195,7 +203,7 @@ module Neuroplastic
     # Construct a filter field
     protected def build_filter
       filters = @filters.try { |f| build_field_filter(f) }
-      range = @range.try(&.map { |value| {range: value} })
+      range = @range.try { |r| ({range: r}) }
       missing = @missing.try(&.map { |field| {missing: {field: field}} })
       exists = @exists.try(&.map { |field| {exists: {field: field}} })
 

@@ -32,24 +32,24 @@ def create_parent_child
   parent_index = Goat.table_name
   child_index = Kid.table_name
 
-  RubberSoul::Elastic.save_document(
+  RubberSoul::Elastic.create_document(
     document: parent,
     index: parent_index,
     parents: TM.parents(parent_name),
-    children: TM.children(parent_name)
+    no_children: TM.children(parent_name).empty?
   )
 
-  RubberSoul::Elastic.save_document(
+  RubberSoul::Elastic.create_document(
     document: child,
     index: child_index,
     parents: TM.parents(child_name),
-    children: TM.children(child_name)
+    no_children: TM.children(child_name).empty?
   )
 end
 
 def create_basic
   basic = Basic.create!(name: {"Kim", "Kylie", "Kendall"}.sample)
-  RubberSoul::Elastic.save_document(
+  RubberSoul::Elastic.create_document(
     document: basic,
     index: Basic.table_name,
   )
@@ -57,7 +57,7 @@ end
 
 def create_base
   base = Base.create!
-  RubberSoul::Elastic.save_document(
+  RubberSoul::Elastic.create_document(
     document: base,
     index: Base.table_name,
   )

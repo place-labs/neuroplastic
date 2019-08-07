@@ -220,7 +220,7 @@ module Neuroplastic
         :must     => must,
         :must_not => must_not,
         :should   => should,
-      }.compact!
+      }.compact
 
       {bool: bool}
     end

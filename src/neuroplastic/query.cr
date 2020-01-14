@@ -9,16 +9,21 @@ module Neuroplastic
     @query_settings : Hash(String, String)?
     @sort = [] of Sort
 
-    def initialize(params = {} of Symbol => String)
+    def initialize(params : HTTP::Params)
+      initialize(params.to_h)
+    end
+
+    def initialize(params : Hash(String, String) | Hash(Symbol, String) = {} of String => String)
+      params = params.transform_keys(&.to_s) if params.is_a?(Hash(Symbol, String))
       @fields = ["_all"]
       @filters = Filter.new
 
-      @search = "#{params[:q]?}*"
+      @search = "#{params["q"]?}*"
 
-      @limit = params[:limit]?.try(&.to_i) || 20
+      @limit = params["limit"]?.try(&.to_i) || 20
       @limit = 500 if @limit > 500
 
-      @offset = params[:offset]?.try(&.to_i) || 0
+      @offset = params["offset"]?.try(&.to_i) || 0
       @offset = 10000 if @offset > 10000
     end
 

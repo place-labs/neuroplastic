@@ -9,7 +9,7 @@ describe Neuroplastic::Query do
   describe "asscociations" do
     it "#has_parent" do
       parent_index = Goat.table_name
-      query = Kid.elastic.query({q: "some goat"}).has_parent(parent: Goat, parent_index: parent_index)
+      query = Kid.elastic.query({"q" => "some goat"}).has_parent(parent: Goat, parent_index: parent_index)
       query_body = query.build[:query]
 
       query.parent.should eq Goat.name
@@ -19,7 +19,7 @@ describe Neuroplastic::Query do
     end
 
     it "#has_child" do
-      query = Goat.elastic.query({q: "some kid"}).has_child(child: Kid)
+      query = Goat.elastic.query({"q" => "some kid"}).has_child(child: Kid)
       query_body = query.build[:query]
 
       JSON.parse(query_body.to_json).dig("should", 0, "has_child", "type").should eq Kid.name
@@ -28,7 +28,7 @@ describe Neuroplastic::Query do
 
   describe "filters" do
     it "#should" do
-      query = Goat.elastic.query({q: "SCREAMS"})
+      query = Goat.elastic.query({"q" => "SCREAMS"})
       teeth = [1, 3, 5, 7, 11]
 
       query.should({"teeth" => teeth})
@@ -39,7 +39,7 @@ describe Neuroplastic::Query do
     end
 
     it "#must" do
-      query = Goat.elastic.query({q: "stands on mountain"})
+      query = Goat.elastic.query({"q" => "stands on mountain"})
       query.must({"name" => ["billy"]})
       filter_field = query.build[:filter]
 
@@ -47,7 +47,7 @@ describe Neuroplastic::Query do
     end
 
     it "#must_not" do
-      query = Goat.elastic.query({q: "makes good cheese"})
+      query = Goat.elastic.query({"q" => "makes good cheese"})
       query.must_not({"name" => ["gruff"]})
       filter_field = query.build[:filter]
 
@@ -55,7 +55,7 @@ describe Neuroplastic::Query do
     end
 
     it "#range" do
-      query = Goat.elastic.query({q: "cheese time"})
+      query = Goat.elastic.query({"q" => "cheese time"})
       query.range({
         "teeth" => {
           :lte => 5,

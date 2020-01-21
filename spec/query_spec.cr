@@ -9,20 +9,22 @@ describe Neuroplastic::Query do
   describe "asscociations" do
     it "#has_parent" do
       parent_index = Goat.table_name
-      query = Kid.elastic.query({"q" => "some goat"}).has_parent(parent: Goat, parent_index: parent_index)
+      query = Child::Kid.elastic.query({"q" => "some goat"}).has_parent(parent: Goat, parent_index: parent_index)
       query_body = query.build[:query]
 
-      query.parent.should eq Goat.name
+      goat_document_type = Neuroplastic::Utils.document_name(Goat)
+
+      query.parent.should eq goat_document_type
       query.index.should eq parent_index
 
-      JSON.parse(query_body.to_json).dig("should", 0, "has_parent", "parent_type").should eq Goat.name
+      JSON.parse(query_body.to_json).dig("should", 0, "has_parent", "parent_type").should eq goat_document_type
     end
 
     it "#has_child" do
-      query = Goat.elastic.query({"q" => "some kid"}).has_child(child: Kid)
+      query = Goat.elastic.query({"q" => "some kid"}).has_child(child: Child::Kid)
       query_body = query.build[:query]
 
-      JSON.parse(query_body.to_json).dig("should", 0, "has_child", "type").should eq Kid.name
+      JSON.parse(query_body.to_json).dig("should", 0, "has_child", "type").should eq Neuroplastic::Utils.document_name(Child::Kid)
     end
   end
 

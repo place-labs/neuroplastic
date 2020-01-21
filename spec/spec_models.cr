@@ -23,7 +23,7 @@ class Goat < AbstractBase
   attribute job : String
 end
 
-class Kid < AbstractBase
+class Child::Kid < AbstractBase
   attribute age : Int32
   attribute hoof_treatment : String
   belongs_to Goat

@@ -1,3 +1,5 @@
+require "./utils"
+
 module Neuroplastic
   class Query
     alias Sort = Hash(String, NamedTuple(order: Symbol)) | String | Hash(String, String)
@@ -9,11 +11,7 @@ module Neuroplastic
     @query_settings : Hash(String, String)?
     @sort = [] of Sort
 
-    def initialize(params : HTTP::Params)
-      initialize(params.to_h)
-    end
-
-    def initialize(params : Hash(String, String) | Hash(Symbol, String) = {} of String => String)
+    def initialize(params : HTTP::Params | Hash(String, String) | Hash(Symbol, String) = {} of String => String)
       params = params.transform_keys(&.to_s) if params.is_a?(Hash(Symbol, String))
       @fields = ["_all"]
       @filters = Filter.new
@@ -39,16 +37,16 @@ module Neuroplastic
 
     # Applys the query to child objects
     def has_child(child : Class)
-      @child = child.name
+      @child = Utils.document_name(child)
 
       self
     end
 
-    # has_parent query
+    # "has_parent" query.
+    #
     # Sets the index to the parent
-    # TODO: Check first that the class is actually a parent of the model
     def has_parent(parent : Class, parent_index : String)
-      @parent = parent.name
+      @parent = Utils.document_name(parent)
       @index = parent_index
 
       self

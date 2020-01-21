@@ -1,4 +1,5 @@
 require "./client"
+require "./utils"
 
 class Neuroplastic::Elastic(T)
   COUNT  = "count"
@@ -12,15 +13,13 @@ class Neuroplastic::Elastic(T)
   VALUE = "value"
 
   # Index defaults to rethinkdb table name
-  getter elastic_index
-  @elastic_index : String = T.table_name
+  getter elastic_index : String = T.table_name
 
   # Document type defaults to class name without namespace
-  getter elastic_type
-  @document_type : String = T.name.split("::").last
+  getter elastic_document_name : String = Utils.document_name(T)
 
-  def initialize(elastic_index : String? = nil, document_type : String? = nil)
-    @document_type = document_type unless document_type.nil?
+  def initialize(elastic_index : String? = nil, document_name : String? = nil)
+    @elastic_document_name = document_name unless document_name.nil?
     @elastic_index = elastic_index unless elastic_index.nil?
   end
 
@@ -99,7 +98,7 @@ class Neuroplastic::Elastic(T)
   private def get_records(result)
     ids = result.dig?(HITS, HITS).try(&.as_a.compact_map { |hit|
       doc_type = hit[SOURCE][TYPE].as_s
-      doc_type == @document_type ? hit[ID].as_s : nil
+      doc_type == elastic_document_name ? hit[ID].as_s : nil
     })
 
     ids ? T.find_all(ids) : [] of T
@@ -108,7 +107,7 @@ class Neuroplastic::Elastic(T)
   def generate_body(builder)
     opt = builder.build
 
-    index = builder.index || @elastic_index
+    index = builder.index || elastic_index
     query = opt[:query]
     filter = opt[:filter]
     sort = (opt[:sort]? || [] of Array(String)) + SCORE

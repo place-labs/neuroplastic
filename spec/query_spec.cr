@@ -34,26 +34,26 @@ describe Neuroplastic::Query do
       teeth = [1, 3, 5, 7, 11]
 
       query.should({"teeth" => teeth})
-      filter_field = query.build[:filter]
+      filter_field = query.build[:filter].not_nil!
 
       expected = teeth.map { |t| ({:term => {"teeth" => t}}) }
-      filter_field.dig(:bool, :should).should eq expected
+      filter_field.dig(:filter, :bool, :should).should eq expected
     end
 
     it "#must" do
       query = Goat.elastic.query({"q" => "stands on mountain"})
       query.must({"name" => ["billy"]})
-      filter_field = query.build[:filter]
+      filter_field = query.build[:filter].not_nil!
 
-      filter_field.dig(:bool, :must).should eq [{:term => {"name" => "billy"}}]
+      filter_field.dig(:filter, :bool, :must).should eq [{:term => {"name" => "billy"}}]
     end
 
     it "#must_not" do
       query = Goat.elastic.query({"q" => "makes good cheese"})
       query.must_not({"name" => ["gruff"]})
-      filter_field = query.build[:filter]
+      filter_field = query.build[:filter].not_nil!
 
-      filter_field.dig(:bool, :must_not).should eq [{:term => {"name" => "gruff"}}]
+      filter_field.dig(:filter, :bool, :must_not).should eq [{:term => {"name" => "gruff"}}]
     end
 
     it "#range" do
@@ -63,8 +63,8 @@ describe Neuroplastic::Query do
           :lte => 5,
         },
       })
-      filter_field = query.build[:filter]
-      filter_field.dig(:bool, :filter).should eq [{range: {"teeth" => {:lte => 5}}}]
+      filter_field = query.build[:filter].not_nil!
+      filter_field.dig(:filter, :bool, :filter).should eq [{range: {"teeth" => {:lte => 5}}}]
     end
   end
 end

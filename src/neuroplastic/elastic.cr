@@ -112,9 +112,9 @@ class Neuroplastic::Elastic(T)
     filter = opt[:filter]
     sort = (opt[:sort]? || [] of Array(String)) + SCORE
 
-    # Only merge in filter if it contains fields
     query_context = {
-      bool: filter ? query.merge({filter: filter}) : query,
+      # Only merge in filter if it contains fields
+      bool: filter ? query.merge(filter) : query,
     }
 
     {

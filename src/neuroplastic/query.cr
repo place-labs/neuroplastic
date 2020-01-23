@@ -6,17 +6,18 @@ module Neuroplastic
     alias FilterValue = Array(Int32) | Array(Float32) | Array(Bool) | Array(String) | Nil
     alias Filter = Hash(String, FilterValue)
 
-    property :offset, :limit, :sort, :fields, :query_settings
+    property :offset, :limit, :sort, :fields, :query_settings, :search
 
     @query_settings : Hash(String, String)?
     @sort = [] of Sort
 
     def initialize(params : HTTP::Params | Hash(String, String) | Hash(Symbol, String) = {} of String => String)
       params = params.transform_keys(&.to_s) if params.is_a?(Hash(Symbol, String))
-      @fields = ["_all"]
+      @fields = [] of String
       @filters = Filter.new
 
-      @search = "#{params["q"]?}*"
+      query = params["q"]? || "*"
+      @search = query.ends_with?('*') ? query : "#{query}*"
 
       @limit = params["limit"]?.try(&.to_i) || 20
       @limit = 500 if @limit > 500
@@ -145,7 +146,7 @@ module Neuroplastic
     # Generates a bool field in the query context
     protected def build_query
       # Query all documents if no search term
-      return {must: {match_all: {} of Symbol => String}} unless @search.size > 1
+      return {must: {match_all: {} of Nil => Nil}} unless @search.size > 1
 
       base_query = {
         :simple_query_string => {
@@ -225,7 +226,7 @@ module Neuroplastic
         :should   => should,
       }.compact
 
-      {bool: bool}
+      {filter: {bool: bool}} unless bool.empty?
     end
 
     # Generate filter field

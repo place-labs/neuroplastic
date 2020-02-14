@@ -19,11 +19,11 @@ module Neuroplastic
       query = params["q"]? || "*"
       @search = query.ends_with?('*') ? query : "#{query}*"
 
-      @limit = params["limit"]?.try(&.to_i) || 20
-      @limit = 500 if @limit > 500
+      @limit = params["limit"]?.try(&.to_i) || 100
+      @limit = 1000 if @limit > 1000
 
       @offset = params["offset"]?.try(&.to_i) || 0
-      @offset = 10000 if @offset > 10000
+      @offset = 100000 if @offset > 100000
     end
 
     def search_field(field)

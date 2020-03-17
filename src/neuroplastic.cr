@@ -15,7 +15,7 @@ module Neuroplastic
   {% end %}
   end
 
-  macro __generate_accessor
+  private macro __generate_accessor
     @@elastic = Neuroplastic::Elastic({{ @type }}).new
     # Exposes the Neuroplastic elastic client
     # TODO: When crystal allows generic classes in unions, make this a lazy instantiation

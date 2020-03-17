@@ -26,5 +26,6 @@ end
 class Child::Kid < AbstractBase
   attribute age : Int32
   attribute hoof_treatment : String
+  attribute visits : Array(String)
   belongs_to Goat
 end

@@ -1,22 +1,19 @@
+require "db/pool"
 require "habitat"
 require "http"
 
 require "./error"
 
 class Neuroplastic::Client
+  private NUM_INDICES = RethinkORM::Base::TABLES.uniq.size
+
   # Settings for elastic client
   Habitat.create do
     setting host : String = ENV["ES_HOST"]? || "127.0.0.1"
     setting port : Int32 = ENV["ES_PORT"]?.try(&.to_i) || 9200
-  end
-
-  @@client : HTTP::Client?
-
-  def client
-    @@client ||= HTTP::Client.new(
-      host: self.settings.host,
-      port: self.settings.port,
-    )
+    setting pool_size : Int32 = ENV["ES_CONN_POOL"]?.try(&.to_i) || NUM_INDICES
+    setting idle_pool_size : Int32 = ENV["ES_IDLE_POOL"]?.try(&.to_i) || NUM_INDICES // 4
+    setting pool_timeout : Float64 = ENV["ES_CONN_POOL_TIMEOUT"]?.try(&.to_f64) || 5.0
   end
 
   def search(arguments = {} of Symbol => String) : JSON::Any
@@ -117,19 +114,19 @@ class Neuroplastic::Client
                when "GET"
                  endpoint = "#{path}?#{normalize_params(params)}"
                  if post_body
-                   client.get(path: endpoint, body: post_body, headers: json_header)
+                   Client.client &.get(path: endpoint, body: post_body, headers: json_header)
                  else
-                   client.get(path: endpoint)
+                   Client.client &.get(path: endpoint)
                  end
                when "POST"
-                 client.post(path: path, body: post_body, headers: json_header)
+                 Client.client &.post(path: path, body: post_body, headers: json_header)
                when "PUT"
-                 client.put(path: path, body: post_body, headers: json_header)
+                 Client.client &.put(path: path, body: post_body, headers: json_header)
                when "DELETE"
                  endpoint = "#{path}?#{normalize_params(params)}"
-                 client.delete(path: endpoint)
+                 Client.client &.delete(path: endpoint)
                when "HEAD"
-                 client.head(path: path)
+                 Client.client &.head(path: path)
                else
                  raise "Niche header..."
                end
@@ -158,5 +155,43 @@ class Neuroplastic::Client
 
   private def json_header
     HTTP::Headers{"Content-Type" => "application/json"}
+  end
+
+  # Elastic Connection Pooling
+  #############################################################################
+
+  @@pool : DB::Pool(PoolHTTP)?
+
+  # Yield an acquired client from the pool
+  #
+  protected def self.client
+    pool = (@@pool ||= DB::Pool(PoolHTTP).new(
+      initial_pool_size: settings.pool_size // 4,
+      max_pool_size: settings.pool_size,
+      max_idle_pool_size: settings.idle_pool_size,
+      checkout_timeout: settings.pool_timeout
+    ) { elastic_connection }).as(DB::Pool(PoolHTTP))
+
+    client = pool.checkout
+    result = yield client
+    pool.release(client)
+
+    result
+  end
+
+  private def self.elastic_connection
+    PoolHTTP.new(host: settings.host, port: settings.port)
+  end
+
+  private class PoolHTTP < HTTP::Client
+    # DB::Pool stubs
+    ############################################################################
+    # :nodoc:
+    def before_checkout
+    end
+
+    # :nodoc:
+    def after_release
+    end
   end
 end

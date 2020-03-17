@@ -21,7 +21,7 @@ end
 # Creates a random parent child across the child and parent indices
 def create_parent_child
   parent = Goat.create(name: "bill the #{Random.rand(100)}th")
-  child = Child::Kid.new(age: Random.rand(18), hoof_treatment: "CuSO4", visits: ["monthly"])
+  child = Child::Kid.new(age: Random.rand(18), hoof_treatment: "CuSO4", visits: ["yearly", "monthly"])
   child.goat = parent
   child.save
 

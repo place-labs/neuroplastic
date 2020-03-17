@@ -29,6 +29,24 @@ describe Neuroplastic::Elastic do
       records[:results].size.should eq 1
       records[:results][0].name.should eq updated_name
     end
+
+    it "#must_not on a embedded document" do
+      elastic = Child::Kid.elastic
+      query = elastic.query
+      query.must_not({"visits" => ["monthly"]})
+
+      records = elastic.search(query)
+      records[:total].should eq 0
+    end
+
+    it "#must_not on a embedded document" do
+      elastic = Child::Kid.elastic
+      query = elastic.query
+      query.must({"visits" => ["monthly", "yearly"]})
+
+      records = elastic.search(query)
+      records[:total].should eq 1
+    end
   end
 
   describe "relations" do

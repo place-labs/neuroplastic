@@ -1,4 +1,4 @@
-require "db/pool"
+require "db"
 require "habitat"
 require "http"
 

@@ -101,7 +101,7 @@ class Neuroplastic::Client
     index = arguments[:index]? || "_all"
     index = index.join(',') if index.is_a?(Array(String))
     path = "/#{index}/_count"
-    method = "GET"
+    method = "POST"
     body = arguments[:body]?
     params = arguments.to_h.select(valid_params)
 
@@ -110,7 +110,7 @@ class Neuroplastic::Client
 
   def perform_request(method, path, params = nil, body = nil)
     post_body = body.try(&.to_json)
-    response = case method
+    response = case method.upcase
                when "GET"
                  endpoint = "#{path}?#{normalize_params(params)}"
                  if post_body
@@ -128,7 +128,7 @@ class Neuroplastic::Client
                when "HEAD"
                  Client.client &.head(path: path)
                else
-                 raise "Niche header..."
+                 raise "Unsupported method: #{method}"
                end
 
     if response.success?

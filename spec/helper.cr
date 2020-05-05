@@ -9,10 +9,8 @@ require "rubber-soul/rubber-soul/table_manager"
 # ES
 ####################################################################################################
 
-RubberSoul::MANAGED_TABLES = [Base, Basic, Goat, Child::Kid] # ameba:disable Style/ConstantNames
+RubberSoul::MANAGED_TABLES = [Base, Basic, Goat, Child::Kid]
 TM         = RubberSoul::TableManager.new(watch: false, backfill: false)
-
-CLIENT = Elasticsearch::API::Client.new({:host => "localhost", :port => 9200})
 
 def recreate_test_indices
   RubberSoul::MANAGED_TABLES.each { |k| TM.reindex(k) }
@@ -61,9 +59,10 @@ def create_base
   )
 end
 
-recreate_test_indices
-create_parent_child
-create_basic
-create_base
-
-sleep 1
+Spec.before_suite do
+  recreate_test_indices
+  create_parent_child
+  create_basic
+  create_base
+  sleep 1
+end

@@ -1,23 +1,21 @@
-sudo: required
 language: crystal
+os: linux
 
-addons:
-  # Add RethinkDB
-  rethinkdb: '2.3'
+services:
+  - docker
 
 before_install:
-  # Add elasticsearch
-  - curl -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.0.1-amd64.deb && \
-  sudo dpkg -i --force-confnew elasticsearch-7.0.1-amd64.deb && \
-  sudo service elasticsearch restart
+  # Add elasticsearch 7.6
+  - docker run --net="host" -p "9300:9300" -p "9200:9200" -e discovery.type=single-node -d blacktop/elasticsearch:7.6
+  # Add rethinkdb 2.4
+  - docker run --net="host" -p "29015:29015" -p "28015:28015" -d rethinkdb:2.4
 
 install:
   - shards install
 
 before_script:
-  - sleep 10
+  - sleep 5
 
 script:
-  - crystal spec
+  - crystal spec -v
   - bin/ameba
-

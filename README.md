@@ -1,5 +1,7 @@
 # neuroplastic
 
+[![Build Status](https://travis-ci.com/spider-gazelle/neuroplastic.svg?branch=master)](https://travis-ci.com/spider-gazelle/neuroplastic)
+
 A module for [rethinkdb-orm](https://github.com/spider-gazelle/rethinkdb-orm).<br>
 Exposes an elasticsearch query DSL that automagically resolves relations between the models.
 

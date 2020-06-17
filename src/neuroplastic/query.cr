@@ -159,7 +159,7 @@ module Neuroplastic
       if @parent || @child
         # Merge user defined query settings to the base query
         query_settings = @query_settings
-        query = base_query.merge(query_settings) unless query_settings.nil?
+        query = query_settings.nil? ? base_query : base_query.merge(query_settings)
         # Generate should field
         should = [query, parent_query, child_query].compact
         {

@@ -17,14 +17,14 @@ describe Neuroplastic::Query do
       query.parent.should eq goat_document_type
       query.index.should eq parent_index
 
-      JSON.parse(query_body.to_json).dig("should", 0, "has_parent", "parent_type").should eq goat_document_type
+      JSON.parse(query_body.to_json).dig("should", 1, "has_parent", "parent_type").should eq goat_document_type
     end
 
     it "#has_child" do
       query = Goat.elastic.query({"q" => "some kid"}).has_child(child: Child::Kid)
       query_body = query.build[:query]
 
-      JSON.parse(query_body.to_json).dig("should", 0, "has_child", "type").should eq Neuroplastic::Utils.document_name(Child::Kid)
+      JSON.parse(query_body.to_json).dig("should", 1, "has_child", "type").should eq Neuroplastic::Utils.document_name(Child::Kid)
     end
   end
 

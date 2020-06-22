@@ -11,6 +11,7 @@ class Neuroplastic::Client
   Habitat.create do
     setting host : String = ENV["ES_HOST"]? || "127.0.0.1"
     setting port : Int32 = ENV["ES_PORT"]?.try(&.to_i) || 9200
+    setting tls : Bool = ENV["ES_TLS"]? == "true"
     setting pool_size : Int32 = ENV["ES_CONN_POOL"]?.try(&.to_i) || NUM_INDICES
     setting idle_pool_size : Int32 = ENV["ES_IDLE_POOL"]?.try(&.to_i) || NUM_INDICES // 4
     setting pool_timeout : Float64 = ENV["ES_CONN_POOL_TIMEOUT"]?.try(&.to_f64) || 5.0
@@ -180,17 +181,15 @@ class Neuroplastic::Client
   end
 
   private def self.elastic_connection
-    PoolHTTP.new(host: settings.host, port: settings.port)
+    PoolHTTP.new(host: settings.host, port: settings.port, tls: settings.tls)
   end
 
   private class PoolHTTP < HTTP::Client
     # DB::Pool stubs
     ############################################################################
-    # :nodoc:
     def before_checkout
     end
 
-    # :nodoc:
     def after_release
     end
   end

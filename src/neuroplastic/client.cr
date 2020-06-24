@@ -9,6 +9,7 @@ class Neuroplastic::Client
 
   # Settings for elastic client
   Habitat.create do
+    setting uri : URI? = ENV["ES_URI"]?.try(&->URI.parse(String))
     setting host : String = ENV["ES_HOST"]? || "127.0.0.1"
     setting port : Int32 = ENV["ES_PORT"]?.try(&.to_i) || 9200
     setting tls : Bool = ENV["ES_TLS"]? == "true"
@@ -181,7 +182,18 @@ class Neuroplastic::Client
   end
 
   private def self.elastic_connection
-    PoolHTTP.new(host: settings.host, port: settings.port, tls: settings.tls)
+    # FIXME: ES_TLS not being pulled from env in habitat settings
+    tls_context = if ENV["ES_TLS"]? == "true"
+                    context = OpenSSL::SSL::Context::Client.new
+                    context.verify_mode = OpenSSL::SSL::VerifyMode::NONE
+                    context
+                  end
+    uri = settings.uri
+    if uri.nil?
+      PoolHTTP.new(host: settings.host, port: settings.port, tls: tls_context)
+    else
+      PoolHTTP.new(uri: uri, tls: tls_context)
+    end
   end
 
   private class PoolHTTP < HTTP::Client

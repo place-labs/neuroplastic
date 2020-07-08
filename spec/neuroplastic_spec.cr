@@ -50,6 +50,12 @@ describe Neuroplastic::Elastic do
   end
 
   describe "relations" do
+    it "#count returns correct count for associated models" do
+      query = Goat.elastic.query
+      count = Goat.elastic.count(query)
+      count.should eq 1
+    end
+
     it "#query.has_parent performs a has_parent query against the parent index" do
       query = Child::Kid.elastic.query({"q" => "bill"}).has_parent(parent: Goat, parent_index: Goat.table_name)
       records = Child::Kid.elastic.search(query)

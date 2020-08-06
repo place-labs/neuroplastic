@@ -1,5 +1,5 @@
 name: neuroplastic
-version: 1.6.2
+version: 1.6.3
 crystal: 0.35.1
 license: MIT
 
@@ -9,7 +9,7 @@ authors:
 dependencies:
   rethinkdb-orm:
     github: spider-gazelle/rethinkdb-orm
-    version: ~> 2.10
+    version: ">= 2.10"
   db:
     github: crystal-lang/crystal-db
     version: ~> 0.9

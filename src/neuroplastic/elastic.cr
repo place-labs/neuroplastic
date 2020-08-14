@@ -23,20 +23,16 @@ class Neuroplastic::Elastic(T)
     @elastic_index = elastic_index unless elastic_index.nil?
   end
 
-  @@client : Neuroplastic::Client?
-
-  # Yields the elastic search client
-  def client
-    @@client ||= Neuroplastic::Client.new
-  end
+  # Yields the elasticsearch client
+  getter(client) { Neuroplastic::Client.new }
 
   # Safely build the query
   def query(params = {} of Symbol => String, filters = nil)
     builder = Query.new(params)
     builder.filter(filters) unless filters.nil?
 
-    # Filter all documents that don't have the correct document type
-    builder.filter({TYPE => [elastic_document_name]})
+    # TODO: Filter all documents that don't have the correct document type
+    # builder.filter({TYPE => [elastic_document_name]})
 
     builder
   end
@@ -99,7 +95,13 @@ class Neuroplastic::Elastic(T)
   # Filters off results that do not match the document type.
   # Returns a collection of records pulled in from the db.
   private def get_records(result)
-    ids = result.dig?(HITS, HITS).try(&.as_a.compact_map { |hit| hit[ID].as_s })
+    ids = result.dig?(HITS, HITS).try(&.as_a.compact_map { |hit|
+      doc_type = hit[SOURCE][TYPE].as_s
+      doc_type == elastic_document_name ? hit[ID].as_s : nil
+    })
+
+    # TODO: Filter by type query fails...
+    # ids = result.dig?(HITS, HITS).try(&.as_a.compact_map { |hit| hit[ID].as_s })
 
     ids ? T.find_all(ids) : [] of T
   end

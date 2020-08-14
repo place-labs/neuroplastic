@@ -188,8 +188,8 @@ class Neuroplastic::Client
                     context.verify_mode = OpenSSL::SSL::VerifyMode::NONE
                     context
                   end
-    uri = settings.uri
-    if uri.nil?
+
+    if (uri = settings.uri).nil?
       PoolHTTP.new(host: settings.host, port: settings.port, tls: tls_context)
     else
       PoolHTTP.new(uri: uri, tls: tls_context)

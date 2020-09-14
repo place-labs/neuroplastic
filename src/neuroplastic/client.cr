@@ -1,10 +1,13 @@
 require "db"
 require "habitat"
 require "http"
+require "log"
 
 require "./error"
 
 class Neuroplastic::Client
+  Log = ::Log.for(self)
+
   private NUM_INDICES = RethinkORM::Base::TABLES.uniq.size
 
   # Settings for elastic client
@@ -20,20 +23,23 @@ class Neuroplastic::Client
 
   def search(arguments = {} of Symbol => String) : JSON::Any
     valid_params = [
-      :analyzer,
+      :_source,
+      :_source_exclude,
+      :_source_include,
+      :allow_no_indices,
       :analyze_wildcard,
+      :analyzer,
+      :batched_reduce_size,
       :default_operator,
       :df,
+      :docvalue_fields,
+      :expand_wildcards,
       :explain,
       :fielddata_fields,
-      :docvalue_fields,
-      :stored_fields,
       :fields,
       :from,
       :ignore_indices,
       :ignore_unavailable,
-      :allow_no_indices,
-      :expand_wildcards,
       :lenient,
       :lowercase_expanded_terms,
       :preference,
@@ -46,11 +52,9 @@ class Neuroplastic::Client
       :size,
       :sort,
       :source,
-      :_source,
-      :_source_include,
-      :_source_exclude,
-      :stored_fields,
       :stats,
+      :stored_fields,
+      :stored_fields,
       :suggest_field,
       :suggest_mode,
       :suggest_size,
@@ -59,7 +63,6 @@ class Neuroplastic::Client
       :timeout,
       :typed_keys,
       :version,
-      :batched_reduce_size,
     ]
 
     index = arguments[:index]? || "_all"
@@ -69,6 +72,7 @@ class Neuroplastic::Client
     params = arguments.to_h.select(valid_params)
 
     fields = arguments[:fields]?
+
     if fields
       fields = [fields] unless fields.is_a?(Array)
       params[:fields] = fields.map(&.to_s).join(',')
@@ -80,24 +84,26 @@ class Neuroplastic::Client
       params[:fielddata_fields] = fielddata_fields.map(&.to_s).join(',')
     end
 
+    Log.debug { "performing search: params=#{params} body=#{body.to_json}" }
+
     perform_request(method: method, path: path, params: params, body: body)
   end
 
   def count(arguments = {} of Symbol => String)
     valid_params = [
-      :ignore_unavailable,
       :allow_no_indices,
-      :expand_wildcards,
-      :min_score,
-      :preference,
-      :routing,
-      :q,
-      :analyzer,
       :analyze_wildcard,
+      :analyzer,
       :default_operator,
       :df,
+      :expand_wildcards,
+      :ignore_unavailable,
       :lenient,
       :lowercase_expanded_terms,
+      :min_score,
+      :preference,
+      :q,
+      :routing,
     ]
 
     index = arguments[:index]? || "_all"
@@ -116,14 +122,14 @@ class Neuroplastic::Client
                when "GET"
                  endpoint = "#{path}?#{normalize_params(params)}"
                  if post_body
-                   Client.client &.get(path: endpoint, body: post_body, headers: json_header)
+                   Client.client &.get(path: endpoint, body: post_body, headers: JSON_HEADER)
                  else
                    Client.client &.get(path: endpoint)
                  end
                when "POST"
-                 Client.client &.post(path: path, body: post_body, headers: json_header)
+                 Client.client &.post(path: path, body: post_body, headers: JSON_HEADER)
                when "PUT"
-                 Client.client &.put(path: path, body: post_body, headers: json_header)
+                 Client.client &.put(path: path, body: post_body, headers: JSON_HEADER)
                when "DELETE"
                  endpoint = "#{path}?#{normalize_params(params)}"
                  Client.client &.delete(path: endpoint)
@@ -134,8 +140,7 @@ class Neuroplastic::Client
                end
 
     if response.success?
-      r = JSON.parse(response.body)
-      r
+      JSON.parse(response.body)
     else
       raise Error::ElasticQueryError.new("ES error: #{response.status_code}\n#{response.body}")
     end
@@ -155,29 +160,26 @@ class Neuroplastic::Client
     end
   end
 
-  private def json_header
-    HTTP::Headers{"Content-Type" => "application/json"}
-  end
+  private JSON_HEADER = HTTP::Headers{"Content-Type" => "application/json"}
 
   # Elastic Connection Pooling
   #############################################################################
 
-  @@pool : DB::Pool(PoolHTTP)?
-
-  # Yield an acquired client from the pool
-  #
-  protected def self.client
-    pool = (@@pool ||= DB::Pool(PoolHTTP).new(
+  protected class_getter pool : DB::Pool(PoolHTTP) {
+    DB::Pool(PoolHTTP).new(
       initial_pool_size: settings.pool_size // 4,
       max_pool_size: settings.pool_size,
       max_idle_pool_size: settings.idle_pool_size,
       checkout_timeout: settings.pool_timeout
-    ) { elastic_connection }).as(DB::Pool(PoolHTTP))
+    ) { elastic_connection }
+  }
 
+  # Yield an acquired client from the pool
+  #
+  protected def self.client
     client = pool.checkout
     result = yield client
     pool.release(client)
-
     result
   end
 

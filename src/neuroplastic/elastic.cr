@@ -6,7 +6,7 @@ class Neuroplastic::Elastic(T)
   SCORE  = ["_score"]
   ID     = "_id"
   SOURCE = "_source"
-  TYPE   = "type"
+  TYPE   = "_document_type"
 
   HITS  = "hits"
   TOTAL = "total"
@@ -31,8 +31,7 @@ class Neuroplastic::Elastic(T)
     builder = Query.new(params)
     builder.filter(filters) unless filters.nil?
 
-    # TODO: Filter all documents that don't have the correct document type
-    # builder.filter({TYPE => [elastic_document_name]})
+    builder.filter({TYPE => [elastic_document_name]})
 
     builder
   end
@@ -95,13 +94,7 @@ class Neuroplastic::Elastic(T)
   # Filters off results that do not match the document type.
   # Returns a collection of records pulled in from the db.
   private def get_records(result)
-    ids = result.dig?(HITS, HITS).try(&.as_a.compact_map { |hit|
-      doc_type = hit[SOURCE][TYPE].as_s
-      doc_type == elastic_document_name ? hit[ID].as_s : nil
-    })
-
-    # TODO: Filter by type query fails...
-    # ids = result.dig?(HITS, HITS).try(&.as_a.compact_map { |hit| hit[ID].as_s })
+    ids = result.dig?(HITS, HITS).try(&.as_a.compact_map { |hit| hit[ID].as_s })
 
     ids ? T.find_all(ids) : [] of T
   end

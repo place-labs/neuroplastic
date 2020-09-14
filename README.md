@@ -1,6 +1,6 @@
 # neuroplastic
 
-[![Build Status](https://travis-ci.com/spider-gazelle/neuroplastic.svg?branch=master)](https://travis-ci.com/spider-gazelle/neuroplastic)
+[![Build Status](https://travis-ci.com/place-labs/neuroplastic.svg?branch=master)](https://travis-ci.com/place-labs/neuroplastic)
 
 A module for [rethinkdb-orm](https://github.com/spider-gazelle/rethinkdb-orm).<br>
 Exposes an elasticsearch query DSL that automagically resolves relations between the models.
@@ -12,7 +12,7 @@ Exposes an elasticsearch query DSL that automagically resolves relations between
    ```yaml
    dependencies:
      neuroplastic:
-       github: aca-labs/neuroplastic
+       github: place-labs/neuroplastic
    ```
 
 2. Run `shards install`
@@ -40,7 +40,7 @@ Model.elastic.search(query)
 
 ## Contributing
 
-1. [Fork it](<https://github.com/aca-labs/neuroplastic/fork>)
+1. [Fork it](<https://github.com/place-labs/neuroplastic/fork>)
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)

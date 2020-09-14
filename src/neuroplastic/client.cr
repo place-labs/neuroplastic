@@ -54,7 +54,6 @@ class Neuroplastic::Client
       :source,
       :stats,
       :stored_fields,
-      :stored_fields,
       :suggest_field,
       :suggest_mode,
       :suggest_size,

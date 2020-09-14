@@ -60,6 +60,8 @@ def create_base
 end
 
 Spec.before_suite do
+  ::Log.setup("*", level: :debug)
+
   recreate_test_indices
   create_parent_child
   create_basic

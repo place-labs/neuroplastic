@@ -19,13 +19,13 @@ end
 
 class Goat < AbstractBase
   attribute name : String
-  attribute teeth : Int32
-  attribute job : String
+  attribute teeth : Int32 = 0
+  attribute job : String = "being a goat"
 end
 
 class Child::Kid < AbstractBase
-  attribute age : Int32
-  attribute hoof_treatment : String
-  attribute visits : Array(String)
+  attribute age : Int32 = 0
+  attribute hoof_treatment : String = "oatmeal scrub"
+  attribute visits : Array(String) = [] of String
   belongs_to Goat
 end

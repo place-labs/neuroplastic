@@ -1,5 +1,5 @@
 name: neuroplastic
-version: 1.6.4
+version: 1.7.0
 crystal: 0.35.1
 license: MIT
 
@@ -19,4 +19,4 @@ development_dependencies:
     version: ~> 0.12
   rubber-soul:
     github: placeos/rubber-soul
-    version: ~> 1.12
+    version: ~> 1.15

@@ -36,7 +36,7 @@ module Neuroplastic
     @index : String?
     getter :child, :parent, :index
 
-    # Applys the query to child objects
+    # Applies the query to child objects
     def has_child(child : Class)
       @child = Utils.document_name(child)
 

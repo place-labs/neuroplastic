@@ -85,7 +85,7 @@ class Neuroplastic::Elastic(T)
     limit = builder.limit
 
     # We check records against limit (pre-compaction) and total against actual result length
-    # Worst case senario is there is one additional request for results at an offset that returns no results.
+    # Worst case scenario is there is one additional request for results at an offset that returns no results.
     # The total results number will be accurate on the final page of results from the clients perspective.
     total = records_size + offset if raw_size < limit && total > (offset + records_size)
     total

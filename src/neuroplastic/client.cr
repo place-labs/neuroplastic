@@ -16,6 +16,7 @@ class Neuroplastic::Client
     setting host : String = ENV["ES_HOST"]? || "127.0.0.1"
     setting port : Int32 = ENV["ES_PORT"]?.try(&.to_i) || 9200
     setting tls : Bool = ENV["ES_TLS"]? == "true"
+    setting pooled : Bool = ENV["ES_POOLED"]? == "true"
     setting pool_size : Int32 = ENV["ES_CONN_POOL"]?.try(&.to_i) || NUM_INDICES
     setting idle_pool_size : Int32 = ENV["ES_IDLE_POOL"]?.try(&.to_i) || NUM_INDICES // 4
     setting pool_timeout : Float64 = ENV["ES_CONN_POOL_TIMEOUT"]?.try(&.to_f64) || 5.0
@@ -173,13 +174,20 @@ class Neuroplastic::Client
     ) { elastic_connection }
   }
 
-  # Yield an acquired client from the pool
+  # Yield an elastic client
   #
   protected def self.client
-    client = pool.checkout
-    result = yield client
-    pool.release(client)
-    result
+    if settings.pooled
+      client = pool.checkout
+      result = yield client
+      pool.release(client)
+      result
+    else
+      client = elastic_connection
+      result = yield client
+      spawn { client.close }
+      result
+    end
   end
 
   private def self.elastic_connection

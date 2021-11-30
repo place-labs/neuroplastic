@@ -10,10 +10,11 @@ require "search-ingest/search-ingest/table_manager"
 ####################################################################################################
 
 SearchIngest::MANAGED_TABLES = [Base, Basic, Goat, Child::Kid]
-TM         = SearchIngest::TableManager.new(watch: false, backfill: false)
+TableManager = SearchIngest::TableManager.new(watch: false, backfill: false)
+Schemas      = SearchIngest::Schemas.new
 
 def recreate_test_indices
-  SearchIngest::MANAGED_TABLES.each { |k| TM.reindex(k) }
+  SearchIngest::MANAGED_TABLES.each { |k| TableManager.reindex(k) }
 end
 
 # Creates a random parent child across the child and parent indices
@@ -31,15 +32,15 @@ def create_parent_child
   SearchIngest::Elastic.create_document(
     document: parent,
     index: parent_index,
-    parents: TM.parents(parent_name),
-    no_children: TM.children(parent_name).empty?
+    parents: Schemas.parents(parent_name),
+    no_children: Schemas.children(parent_name).empty?
   )
 
   SearchIngest::Elastic.create_document(
     document: child,
     index: child_index,
-    parents: TM.parents(child_name),
-    no_children: TM.children(child_name).empty?
+    parents: Schemas.parents(child_name),
+    no_children: Schemas.children(child_name).empty?
   )
 end
 

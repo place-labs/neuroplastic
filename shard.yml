@@ -1,21 +1,24 @@
 name: neuroplastic
-version: 1.8.0
+version: 1.9.0
 crystal: ">= 1.0.0"
 license: MIT
 authors:
   - Caspian Baska <caspian@place.tech>
 
 dependencies:
-  rethinkdb-orm:
-    github: spider-gazelle/rethinkdb-orm
-    version: ">= 2.10"
   db:
     github: crystal-lang/crystal-db
     version: ~> 0.9
+
+  rethinkdb-orm:
+    github: spider-gazelle/rethinkdb-orm
+    version: ">= 2.10"
+
 development_dependencies:
   ameba:
     github: crystal-ameba/ameba
     version: ~> 0.12
-  rubber-soul:
-    github: placeos/rubber-soul
-    version: ~> 1.15
+
+  search-ingest:
+    github: placeos/search-ingest
+    version: ~> 2.0

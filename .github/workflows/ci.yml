@@ -4,33 +4,12 @@ on:
   schedule:
     - cron: "0 0 * * 0" # Every Sunday at midnight
 jobs:
-  style:
-    name: Style
-    runs-on: ubuntu-latest
-    container: crystallang/crystal
-    steps:
-      - uses: actions/checkout@v2
-      - name: Format
-        run: crystal tool format --check
-      - name: Lint
-        uses: crystal-ameba/github-action@v0.2.12
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   test:
-    name: "Test - crystal: ${{ matrix.crystal }}, stable: ${{ matrix.stable }}"
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        stable: [true]
-        crystal:
-          - nightly
-        include:
-          - crystal: nightly
-            stable: false
-    continue-on-error: ${{ !matrix.stable }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: Run docker-compose test environment
-        run: ./test
-        env:
-          CRYSTAL_VERSION: ${{ matrix.crystal }}
+    name: "Run spec suite"
+    uses: PlaceOS/.github/.github/workflows/containerised-test.yml@feat/optional-cache
+    with:
+      cache_shards: false
+
+  crystal-style:
+    name: "Check crystal style"
+    uses: PlaceOS/.github/.github/workflows/crystal-style.yml@main

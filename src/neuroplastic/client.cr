@@ -12,14 +12,29 @@ class Neuroplastic::Client
 
   # Settings for elastic client
   Habitat.create do
-    setting uri : URI? = ENV["ES_URI"]?.try(&->URI.parse(String))
-    setting host : String = ENV["ES_HOST"]? || "127.0.0.1"
-    setting port : Int32 = ENV["ES_PORT"]?.try(&.to_i) || 9200
-    setting tls : Bool = ENV["ES_TLS"]? == "true"
-    setting pooled : Bool = ENV["ES_POOLED"]? == "true"
-    setting pool_size : Int32 = ENV["ES_CONN_POOL"]?.try(&.to_i) || NUM_INDICES
-    setting idle_pool_size : Int32 = ENV["ES_IDLE_POOL"]?.try(&.to_i) || NUM_INDICES // 4
-    setting pool_timeout : Float64 = ENV["ES_CONN_POOL_TIMEOUT"]?.try(&.to_f64) || 5.0
+    setting uri : URI? = Client.env_with_deprecation("ELASTIC_URI", "ES_URI").try(&->URI.parse(String))
+    setting host : String = Client.env_with_deprecation("ELASTIC_HOST", "ES_HOST") || "127.0.0.1"
+    setting port : Int32 = Client.env_with_deprecation("ELASTIC_PORT", "ES_PORT").try(&.to_i) || 9200
+    setting tls : Bool = Client.env_with_deprecation("ELASTIC_TLS", "ES_TLS") == "true"
+    setting pooled : Bool = Client.env_with_deprecation("ELASTIC_POOLED", "ES_POOLED") == "true"
+    setting pool_size : Int32 = Client.env_with_deprecation("ELASTIC_CONN_POOL", "ES_CONN_POOL").try(&.to_i) || NUM_INDICES
+    setting idle_pool_size : Int32 = Client.env_with_deprecation("ELASTIC_IDLE_POOL", "ES_IDLE_POOL").try(&.to_i) || NUM_INDICES // 4
+    setting pool_timeout : Float64 = Client.env_with_deprecation("ELASTIC_CONN_POOL_TIMEOUT", "ES_CONN_POOL_TIMEOUT").try(&.to_f64) || 5.0
+  end
+
+  # The first argument will be treated as the correct environment variable.
+  # Presence of follwoing vars will produce warnings.
+  protected def self.env_with_deprecation(*args) : String?
+    if correct_env = ENV[args.first]?.presence
+      return correct_env
+    end
+
+    args[1..].each do |env|
+      if found = ENV[env]?.presence
+        Log.warn { "using deprecated env var #{env}, please use #{args.first}" }
+        return found
+      end
+    end
   end
 
   def search(arguments = {} of Symbol => String) : JSON::Any

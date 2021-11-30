@@ -1,0 +1,4 @@
+dependencies:
+  rethinkdb:
+    github: kingsleyh/crystal-rethinkdb
+    version: ~> 0.3

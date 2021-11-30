@@ -11,22 +11,23 @@ x-rethinkdb-client-env: &rethinkdb-client-env
   RETHINKDB_PORT: ${RETHINKDB_PORT:-28015}
   RETHINKDB_DB: ${RETHINKDB_DB:-place_development}
 
-x-rubber-soul-client-env: &rubber-soul-client-env
-  RUBBER_SOUL_URI: ${RUBBER_SOUL_URI:-http://rubber-soul:3000}
+x-search-ingest-client-env: &search-ingest-client-env
+  SEARCH_INGEST_URI: ${SEARCH_INGEST_URI:-http://search-ingest:3000}
 
 services:
   test:
-    build:
-      context: .
-      args:
-        crystal_version: ${CRYSTAL_VERSION:-1.0.0}
+    image: placeos/service-spec-runner:${CRYSTAL_VERSION:-1.2.2}
     volumes:
-      - ./spec:/app/spec
-      - ./src:/app/src
+      - ${PWD}/lib:/app/lib
+      - ${PWD}/shard.lock:/app/shard.lock
+      - ${PWD}/shard.yml:/app/shard.yml
+      - ${PWD}/shard.override.yml:/app/shard.override.yml
+      - ${PWD}/spec:/app/spec
+      - ${PWD}/src:/app/src
     depends_on:
       - elastic
       - rethink
-      - rubber-soul
+      - search-ingest
     environment:
       # Environment
       GITHUB_ACTION: ${GITHUB_ACTION:-}
@@ -45,10 +46,10 @@ services:
     restart: always
     hostname: rethink
 
-  rubber-soul: # RethinkDB to Elasticsearch Service
-    image: placeos/rubber-soul:${PLACE_RUBBER_SOUL_TAG:-nightly}
+  search-ingest: # RethinkDB to Elasticsearch Service
+    image: placeos/search-ingest:${PLACE_SEARCH_INGEST_TAG:-nightly}
     restart: always
-    hostname: rubber-soul
+    hostname: search-ingest
     depends_on:
       - elastic
       - rethink

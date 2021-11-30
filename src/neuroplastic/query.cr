@@ -105,9 +105,7 @@ module Neuroplastic
       # This transformation is necessary to satisfy the union type RangeValue.
       # FIXME: potential efficiency savings here
       transformed : RangeQuery = filter.transform_values do |filter_hash|
-        filter_hash.transform_values do |range_value|
-          range_value.as RangeValue
-        end
+        filter_hash.transform_values &.as(RangeValue)
       end
 
       unless invalid_args.empty?

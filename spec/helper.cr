@@ -4,16 +4,16 @@ require "../src/neuroplastic"
 require "../src/neuroplastic/*"
 
 require "./spec_models"
-require "rubber-soul/rubber-soul/table_manager"
+require "search-ingest/search-ingest/table_manager"
 
 # ES
 ####################################################################################################
 
-RubberSoul::MANAGED_TABLES = [Base, Basic, Goat, Child::Kid]
-TM         = RubberSoul::TableManager.new(watch: false, backfill: false)
+SearchIngest::MANAGED_TABLES = [Base, Basic, Goat, Child::Kid]
+TM         = SearchIngest::TableManager.new(watch: false, backfill: false)
 
 def recreate_test_indices
-  RubberSoul::MANAGED_TABLES.each { |k| TM.reindex(k) }
+  SearchIngest::MANAGED_TABLES.each { |k| TM.reindex(k) }
 end
 
 # Creates a random parent child across the child and parent indices
@@ -28,14 +28,14 @@ def create_parent_child
   parent_index = Goat.table_name
   child_index = Child::Kid.table_name
 
-  RubberSoul::Elastic.create_document(
+  SearchIngest::Elastic.create_document(
     document: parent,
     index: parent_index,
     parents: TM.parents(parent_name),
     no_children: TM.children(parent_name).empty?
   )
 
-  RubberSoul::Elastic.create_document(
+  SearchIngest::Elastic.create_document(
     document: child,
     index: child_index,
     parents: TM.parents(child_name),
@@ -45,7 +45,7 @@ end
 
 def create_basic
   basic = Basic.create!(name: {"Kim", "Kylie", "Kendall"}.sample)
-  RubberSoul::Elastic.create_document(
+  SearchIngest::Elastic.create_document(
     document: basic,
     index: Basic.table_name,
   )
@@ -53,7 +53,7 @@ end
 
 def create_base
   base = Base.create!
-  RubberSoul::Elastic.create_document(
+  SearchIngest::Elastic.create_document(
     document: base,
     index: Base.table_name,
   )

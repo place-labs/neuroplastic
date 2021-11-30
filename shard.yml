@@ -10,9 +10,6 @@ dependencies:
     github: crystal-lang/crystal-db
     version: ~> 0.9
 
-  inactive-support:
-    github: spider-gazelle/inactive-support
-
   rethinkdb-orm:
     github: spider-gazelle/rethinkdb-orm
     version: ">= 2.10"

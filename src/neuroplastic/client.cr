@@ -1,9 +1,7 @@
 require "db"
 require "habitat"
 require "http"
-require "inactive-support/args"
 require "log"
-require "rethinkdb-orm"
 
 require "./error"
 
@@ -24,52 +22,53 @@ class Neuroplastic::Client
     setting pool_timeout : Float64 = ENV["ES_CONN_POOL_TIMEOUT"]?.try(&.to_f64) || 5.0
   end
 
-  def search(
-    q : String = "*",
-    index : String = "_all",
-    fields : String? = nil,
-    body = nil,
-    _source : String? = nil,
-    _source_exclude : String? = nil,
-    _source_include : String? = nil,
-    allow_no_indices : String? = nil,
-    analyze_wildcard : String? = nil,
-    analyzer : String? = nil,
-    batched_reduce_size : String? = nil,
-    default_operator : String? = nil,
-    df : String? = nil,
-    docvalue_fields : String? = nil,
-    expand_wildcards : String? = nil,
-    explain : String? = nil,
-    fielddata_fields : String? = nil,
-    from : String? = nil,
-    ignore_indices : String? = nil,
-    ignore_unavailable : String? = nil,
-    lenient : String? = nil,
-    lowercase_expanded_terms : String? = nil,
-    preference : String? = nil,
-    query_cache : String? = nil,
-    request_cache : String? = nil,
-    routing : String? = nil,
-    scroll : String? = nil,
-    search_type : String? = nil,
-    size : String? = nil,
-    sort : String? = nil,
-    source : String? = nil,
-    stats : String? = nil,
-    stored_fields : String? = nil,
-    suggest_field : String? = nil,
-    suggest_mode : String? = nil,
-    suggest_size : String? = nil,
-    suggest_text : String? = nil,
-    terminate_after : String? = nil,
-    timeout : String? = nil,
-    typed_keys : String? = nil,
-    version : String? = nil,
-  ) : JSON::Any
+  def search(arguments = {} of Symbol => String) : JSON::Any
+    valid_params = [
+      :_source,
+      :_source_exclude,
+      :_source_include,
+      :allow_no_indices,
+      :analyze_wildcard,
+      :analyzer,
+      :batched_reduce_size,
+      :default_operator,
+      :df,
+      :docvalue_fields,
+      :expand_wildcards,
+      :explain,
+      :fielddata_fields,
+      :fields,
+      :from,
+      :ignore_indices,
+      :ignore_unavailable,
+      :lenient,
+      :lowercase_expanded_terms,
+      :preference,
+      :q,
+      :query_cache,
+      :request_cache,
+      :routing,
+      :scroll,
+      :search_type,
+      :size,
+      :sort,
+      :source,
+      :stats,
+      :stored_fields,
+      :suggest_field,
+      :suggest_mode,
+      :suggest_size,
+      :suggest_text,
+      :terminate_after,
+      :timeout,
+      :typed_keys,
+      :version,
+    ]
 
+    index = arguments[:index]? || "_all"
     path = "/#{index}/_search"
     method = "POST"
+    body = arguments[:body]?
     params = arguments.to_h.select(valid_params)
 
     fields = arguments[:fields]?

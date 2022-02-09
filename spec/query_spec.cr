@@ -3,7 +3,7 @@ require "./helper"
 describe Neuroplastic::Query do
   it "builds an elasticsearch query" do
     query_body = Basic.elastic.query.build
-    query_body.keys.should eq ({:query, :filter, :offset, :limit, :sort})
+    query_body.keys.should eq({:query, :filter, :offset, :limit, :sort})
   end
 
   describe "asscociations" do

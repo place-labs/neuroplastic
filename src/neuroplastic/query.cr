@@ -6,15 +6,20 @@ module Neuroplastic
     alias FilterValue = Array(Int32) | Array(Float32) | Array(Bool) | Array(String) | Nil
     alias Filter = Hash(String, FilterValue)
 
-    property :offset, :limit, :sort, :fields, :query_settings, :search
+    getter search : String
 
-    @query_settings : Hash(String, String)?
-    @sort = [] of Sort
+    getter offset : Int32
+
+    getter limit : Int32
+
+    getter query_settings : Hash(String, String)?
+
+    getter sort : Array(Sort) = [] of Sort
+
+    getter fields : Array(String) = [] of String
 
     def initialize(params : HTTP::Params | Hash(String, String) | Hash(Symbol, String) = {} of String => String)
       params = params.transform_keys(&.to_s) if params.is_a?(Hash(Symbol, String))
-      @fields = [] of String
-      @filters = Filter.new
 
       query = params["q"]? || "*"
       @search = query.ends_with?('*') ? query : "#{query}*"
@@ -26,15 +31,20 @@ module Neuroplastic
       @offset = 100000 if @offset > 100000
     end
 
+    def initialize(@search : String, @limit : Int32 = 100, @offset : Int32 = 0)
+      @search = @search.ends_with?('*') ? @search : "#{@search}*"
+
+      @limit = 1000 if @limit > 1000
+    end
+
     def search_field(field)
-      @fields.unshift(field)
+      fields.unshift(field)
       self
     end
 
-    @child : String?
-    @parent : String?
-    @index : String?
-    getter :child, :parent, :index
+    getter child : String?
+    getter parent : String?
+    getter index : String?
 
     # Applies the query to child objects
     def has_child(child : Class)
@@ -53,38 +63,58 @@ module Neuroplastic
       self
     end
 
+    # Filters
+    ###############################################################################################
+
+    getter filters : Filter do
+      Filter.new
+    end
+
+    getter should : Filter do
+      Filter.new
+    end
+
+    getter must_not : Filter do
+      Filter.new
+    end
+
+    getter must : Filter do
+      Filter.new
+    end
+
+    getter range : RangeQuery do
+      RangeQuery.new
+    end
+
     def filter(filters : Filter)
-      @filters = @filters.try &.merge(filters)
+      self.filters.merge!(filters)
 
       self
     end
 
     # Like filter, but at least one should match in absence of `filter`/`must` hits
     def should(filters : Filter)
-      @should ||= Filter.new
-      @should = @should.try &.merge(filters)
+      self.should.merge!(filters)
 
       self
     end
 
     # Like filter, but all hits must match each filter
     def must(filters : Filter)
-      @must ||= Filter.new
-      @must = @must.try &.merge(filters)
+      self.must.merge!(filters)
 
       self
     end
 
     # The opposite of filter, essentially a not
     def must_not(filters : Filter)
-      @must_not ||= Filter.new
-      @must_not = @must_not.try &.merge(filters)
+      self.must_not.merge!(filters)
 
       self
     end
 
     def sort(sort : Sort)
-      @sort << sort
+      self.sort << sort
 
       self
     end
@@ -95,8 +125,6 @@ module Neuroplastic
     RANGE_PARAMS = {:gte, :gt, :lte, :lt, :boost}
 
     def range(filter)
-      @range ||= RangeQuery.new
-
       invalid_args = filter.values.flat_map(&.keys).reject do |k|
         RANGE_PARAMS.includes? k
       end
@@ -112,7 +140,7 @@ module Neuroplastic
         raise Error::MalformedQuery.new("Invalid range query arguments: #{invalid_args.join(",")}")
       end
 
-      @range.try &.merge!(transformed)
+      self.range.merge!(transformed)
 
       self
     end
@@ -135,9 +163,9 @@ module Neuroplastic
       {
         query:  build_query,
         filter: build_filter,
-        offset: @offset,
-        limit:  @limit,
-        sort:   @sort,
+        offset: offset,
+        limit:  limit,
+        sort:   sort,
       }
     end
 
@@ -149,7 +177,7 @@ module Neuroplastic
       base_query = {
         :simple_query_string => {
           query:  @search,
-          fields: @fields,
+          fields: @fields || [] of String,
         },
       }
 

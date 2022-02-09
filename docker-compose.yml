@@ -3,8 +3,8 @@ version: "3.7"
 # YAML Anchors
 
 x-elastic-client-env: &elastic-client-env
-  ES_HOST: ${ELASTIC_HOST:-elastic}
-  ES_PORT: ${ELASTIC_PORT:-9200}
+  ELASTIC_HOST: ${ELASTIC_HOST:-elastic}
+  ELASTIC_PORT: ${ELASTIC_PORT:-9200}
 
 x-rethinkdb-client-env: &rethinkdb-client-env
   RETHINKDB_HOST: ${RETHINKDB_HOST:-rethink}
@@ -36,7 +36,7 @@ services:
       <<: *rethinkdb-client-env
 
   elastic:
-    image: blacktop/elasticsearch:${ELASTIC_VERSION:-7.6}
+    image: blacktop/elasticsearch:${ELASTIC_VERSION:-7.9}
     restart: always
     environment:
       discovery.type: single-node

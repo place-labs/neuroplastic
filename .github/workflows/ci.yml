@@ -6,7 +6,7 @@ on:
 jobs:
   test:
     name: "Run spec suite"
-    uses: PlaceOS/.github/.github/workflows/containerised-test.yml@feat/optional-cache
+    uses: PlaceOS/.github/.github/workflows/containerised-test.yml@main
     with:
       cache_shards: false
 

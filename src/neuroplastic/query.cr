@@ -6,15 +6,26 @@ module Neuroplastic
     alias FilterValue = Array(Int32) | Array(Float32) | Array(Bool) | Array(String) | Nil
     alias Filter = Hash(String, FilterValue)
 
-    property :offset, :limit, :sort, :fields, :query_settings, :search
+    getter search : String
 
-    @query_settings : Hash(String, String)?
-    @sort = [] of Sort
+    getter filters = Filter.new
+
+    getter offset : Int32
+
+    getter limit : Int32
+
+    getter query_settings : Hash(String, String)?
+
+    getter sort : Array(String) do
+      [] of Sort
+    end
+
+    getter fields : Array(String) do
+      [] of String
+    end
 
     def initialize(params : HTTP::Params | Hash(String, String) | Hash(Symbol, String) = {} of String => String)
       params = params.transform_keys(&.to_s) if params.is_a?(Hash(Symbol, String))
-      @fields = [] of String
-      @filters = Filter.new
 
       query = params["q"]? || "*"
       @search = query.ends_with?('*') ? query : "#{query}*"
@@ -26,15 +37,20 @@ module Neuroplastic
       @offset = 100000 if @offset > 100000
     end
 
+    def initialize(@search : String, @limit : Int32 = 100, @offset : Int32 = 0)
+      @search = @search.ends_with?('*') ? @search : "#{@search}*"
+
+      @limit = 1000 if @limit > 1000
+    end
+
     def search_field(field)
       @fields.unshift(field)
       self
     end
 
-    @child : String?
-    @parent : String?
-    @index : String?
-    getter :child, :parent, :index
+    getter child : String?
+    getter parent : String?
+    getter index : String?
 
     # Applies the query to child objects
     def has_child(child : Class)

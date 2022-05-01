@@ -10,11 +10,12 @@ require "search-ingest/search-ingest/table_manager"
 ####################################################################################################
 
 SearchIngest::MANAGED_TABLES = [Base, Basic, Goat, Child::Kid]
-TableManager = SearchIngest::TableManager.new(watch: false, backfill: false)
-Schemas      = SearchIngest::Schemas.new
+Tables       = SearchIngest.tables(SearchIngest::MANAGED_TABLES).last
+Schemas      = SearchIngest.tables(SearchIngest::MANAGED_TABLES).first
+TableManager = SearchIngest::TableManager.new(tables: Tables, watch: false, backfill: false)
 
 def recreate_test_indices
-  SearchIngest::MANAGED_TABLES.each { |k| TableManager.reindex(k) }
+  Tables.each &.reindex
 end
 
 # Creates a random parent child across the child and parent indices

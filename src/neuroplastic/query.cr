@@ -25,16 +25,16 @@ module Neuroplastic
       @search = query.ends_with?('*') ? query : "#{query}*"
 
       @limit = params["limit"]?.try(&.to_i) || 100
-      @limit = 1000 if @limit > 1000
+      @limit = 10000 if @limit > 10000
 
       @offset = params["offset"]?.try(&.to_i) || 0
-      @offset = 100000 if @offset > 100000
+      @offset = 1000000 if @offset > 1000000
     end
 
     def initialize(@search : String, @limit : Int32 = 100, @offset : Int32 = 0)
       @search = @search.ends_with?('*') ? @search : "#{@search}*"
 
-      @limit = 1000 if @limit > 1000
+      @limit = 10000 if @limit > 10000
     end
 
     def search_field(field)

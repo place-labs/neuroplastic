@@ -1,4 +1,5 @@
 require "./utils"
+require "base64"
 
 module Neuroplastic
   class Query
@@ -11,6 +12,9 @@ module Neuroplastic
     getter offset : Int32
 
     getter limit : Int32
+
+    alias SearchAfter = Array(String | Int64 | Float64)
+    getter search_after : SearchAfter?
 
     getter query_settings : Hash(String, String)?
 
@@ -29,6 +33,12 @@ module Neuroplastic
 
       @offset = params["offset"]?.try(&.to_i) || 0
       @offset = 1000000 if @offset > 1000000
+
+      if search_ref = params["ref"]?
+        @search_after = SearchAfter.from_json(Base64.decode_string(search_ref))
+      else
+        @search_after = nil
+      end
     end
 
     def initialize(@search : String, @limit : Int32 = 100, @offset : Int32 = 0)
@@ -161,11 +171,12 @@ module Neuroplastic
 
     def build
       {
-        query:  build_query,
-        filter: build_filter,
-        offset: offset,
-        limit:  limit,
-        sort:   sort,
+        query:        build_query,
+        filter:       build_filter,
+        offset:       offset,
+        limit:        limit,
+        sort:         sort,
+        search_after: search_after,
       }
     end
 

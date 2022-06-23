@@ -46,7 +46,19 @@ def create_parent_child
 end
 
 def create_basic
-  basic = Basic.create!(name: {"Kim", "Kylie", "Kendall"}.sample)
+  basic = Basic.create!(name: "Kim")
+  SearchIngest::Elastic.create_document(
+    document: basic,
+    index: Basic.table_name,
+  )
+
+  basic = Basic.create!(name: "Kylie")
+  SearchIngest::Elastic.create_document(
+    document: basic,
+    index: Basic.table_name,
+  )
+
+  basic = Basic.create!(name: "Kendall")
   SearchIngest::Elastic.create_document(
     document: basic,
     index: Basic.table_name,

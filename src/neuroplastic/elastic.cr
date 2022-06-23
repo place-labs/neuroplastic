@@ -1,5 +1,6 @@
 require "./client"
 require "./utils"
+require "base64"
 
 class Neuroplastic::Elastic(T)
   COUNT  = "count"
@@ -41,7 +42,7 @@ class Neuroplastic::Elastic(T)
     query = generate_body(builder)
 
     # Simplify the query
-    body = query[:body].to_h.reject(:from, :size, :sort)
+    body = query[:body].to_h.reject(:from, :size, :sort, :track_total_hits)
     simplified = query.merge({body: body})
     client.count(simplified)[COUNT].as_i
   end
@@ -66,9 +67,14 @@ class Neuroplastic::Elastic(T)
     records = block ? raw_records.compact_map { |r| block.call r } : raw_records
 
     total = result_total(result: result, builder: builder, records: records, raw: raw_records)
+    if search_after = result.dig?(HITS, HITS, -1, "sort").try(&.as_a?)
+      ref = Base64.strict_encode(search_after.to_json)
+    end
+
     {
       total:   total,
       results: records,
+      ref:     ref,
     }
   end
 
@@ -112,14 +118,46 @@ class Neuroplastic::Elastic(T)
       bool: filter ? query.merge(filter) : query,
     }
 
-    {
-      index: index,
-      body:  {
-        query: query_context,
-        sort:  sort,
-        from:  opt[:offset],
-        size:  opt[:limit],
-      },
-    }
+    # search after for infinite scrolling
+    if search_after = opt[:search_after]
+      from = nil
+    else
+      offset = opt[:offset]
+      from = offset == 0 ? nil : offset
+    end
+
+    if search_after
+      {
+        index: index,
+        body:  {
+          track_total_hits: true,
+          query:            query_context,
+          sort:             sort,
+          size:             opt[:limit],
+          search_after:     search_after,
+        },
+      }
+    elsif offset == 0
+      {
+        index: index,
+        body:  {
+          track_total_hits: true,
+          query:            query_context,
+          sort:             sort,
+          size:             opt[:limit],
+        },
+      }
+    else
+      {
+        index: index,
+        body:  {
+          track_total_hits: true,
+          query:            query_context,
+          sort:             sort,
+          from:             from,
+          size:             opt[:limit],
+        },
+      }
+    end
   end
 end

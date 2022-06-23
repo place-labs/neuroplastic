@@ -14,7 +14,7 @@ class Base < RethinkORM::Base
 end
 
 class Basic < AbstractBase
-  attribute name : String
+  attribute name : String, es_subfield: "keyword"
 end
 
 class Goat < AbstractBase

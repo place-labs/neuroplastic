@@ -2,7 +2,7 @@ name: CI
 on:
   push:
   schedule:
-    - cron: "0 0 * * 0" # Every Sunday at midnight
+    - cron: "0 1 * * 0" # Every Sunday at 1:00
 jobs:
   test:
     name: "Run spec suite"

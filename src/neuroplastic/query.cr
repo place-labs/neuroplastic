@@ -130,7 +130,7 @@ module Neuroplastic
     end
 
     alias RangeQuery = Hash(String, Hash(Symbol, RangeValue))
-    alias RangeValue = Int32 | Float32 | Bool | String
+    alias RangeValue = Int32 | Float32 | Bool | String | Int64 | Float64
 
     RANGE_PARAMS = {:gte, :gt, :lte, :lt, :boost}
 

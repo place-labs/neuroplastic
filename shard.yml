@@ -10,10 +10,6 @@ dependencies:
     github: crystal-lang/crystal-db
     version: ~> 0.9
 
-  rethinkdb-orm:
-    github: spider-gazelle/rethinkdb-orm
-    version: ">= 2.10"
-
 development_dependencies:
   ameba:
     github: crystal-ameba/ameba
@@ -21,3 +17,7 @@ development_dependencies:
   search-ingest:
     github: placeos/search-ingest
     version: ~> 2.0
+
+  rethinkdb-orm:
+    github: spider-gazelle/rethinkdb-orm
+    version: ">= 2.10"

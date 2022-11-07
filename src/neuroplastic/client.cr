@@ -7,8 +7,8 @@ require "./error"
 
 class Neuroplastic::Client
   Log = ::Log.for(self)
-
-  private NUM_INDICES = RethinkORM::Base::TABLES.uniq.size
+  # :nodoc:
+  class_property indices : Int32 = 0
 
   # Settings for elastic client
   Habitat.create do
@@ -17,8 +17,8 @@ class Neuroplastic::Client
     setting port : Int32 = Client.env_with_deprecation("ELASTIC_PORT", "ES_PORT").try(&.to_i) || 9200
     setting tls : Bool = Client.env_with_deprecation("ELASTIC_TLS", "ES_TLS") == "true"
     setting pooled : Bool = Client.env_with_deprecation("ELASTIC_POOLED", "ES_POOLED") == "true"
-    setting pool_size : Int32 = Client.env_with_deprecation("ELASTIC_CONN_POOL", "ES_CONN_POOL").try(&.to_i) || NUM_INDICES
-    setting idle_pool_size : Int32 = Client.env_with_deprecation("ELASTIC_IDLE_POOL", "ES_IDLE_POOL").try(&.to_i) || NUM_INDICES // 4
+    setting pool_size : Int32 = Client.env_with_deprecation("ELASTIC_CONN_POOL", "ES_CONN_POOL").try(&.to_i) || Client.indices
+    setting idle_pool_size : Int32 = Client.env_with_deprecation("ELASTIC_IDLE_POOL", "ES_IDLE_POOL").try(&.to_i) || Client.indices // 4
     setting pool_timeout : Float64 = Client.env_with_deprecation("ELASTIC_CONN_POOL_TIMEOUT", "ES_CONN_POOL_TIMEOUT").try(&.to_f64) || 5.0
   end
 

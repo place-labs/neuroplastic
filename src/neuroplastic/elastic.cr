@@ -14,6 +14,8 @@ class Neuroplastic::Elastic(T)
   TOTAL = "total"
   VALUE = "value"
 
+  Log = ::Log.for("search")
+
   # Index defaults to rethinkdb table name
   getter elastic_index : String = T.table_name
 
@@ -62,8 +64,7 @@ class Neuroplastic::Elastic(T)
 
   private def _search(builder, block = nil)
     query = generate_body(builder)
-    Log.info &.emit("Elastic search", query: query.to_h.to_json)
-
+    Log.debug &.emit("Executing query", query: query.to_h.to_json)
     result = client.search(query.to_h)
 
     raw_records = get_records(result).to_a

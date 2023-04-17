@@ -201,7 +201,7 @@ module Neuroplastic
         should = [query, parent_query, child_query].compact
         {
           minimum_should_match: 1,
-          should: should,
+          should:               should,
         }
       else
         {
@@ -258,10 +258,10 @@ module Neuroplastic
 
       # Construct bool field, remove nil keys
       bool = {
-        :filter               => filters,
-        :must                 => must,
-        :must_not             => must_not,
-        :should               => should,
+        :filter   => filters,
+        :must     => must,
+        :must_not => must_not,
+        :should   => should,
       }.compact
 
       {filter: {bool: bool}} unless bool.empty?

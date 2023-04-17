@@ -1,6 +1,7 @@
 require "./client"
 require "./utils"
 require "base64"
+require "log"
 
 class Neuroplastic::Elastic(T)
   COUNT  = "count"
@@ -61,10 +62,7 @@ class Neuroplastic::Elastic(T)
 
   private def _search(builder, block = nil)
     query = generate_body(builder)
-
-    pp "########################################"
-    puts query.to_h.to_json
-    pp "########################################"
+    Log.info &.emit("Elastic search", query: query.to_h.to_json)
 
     result = client.search(query.to_h)
 

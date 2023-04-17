@@ -63,7 +63,7 @@ class Neuroplastic::Elastic(T)
     query = generate_body(builder)
 
     pp "########################################"
-    puts query.build.to_json
+    puts query.to_h.to_json
     pp "########################################"
 
     result = client.search(query.to_h)

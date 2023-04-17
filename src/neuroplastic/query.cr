@@ -73,6 +73,13 @@ module Neuroplastic
       self
     end
 
+    getter minimum_should_match : Int32? = nil
+
+    def minimum_should_match(count : Int)
+      @minimum_should_match = count.to_i
+      self
+    end
+
     # Filters
     ###############################################################################################
 
@@ -200,7 +207,7 @@ module Neuroplastic
         # Generate should field
         should = [query, parent_query, child_query].compact
         {
-          minimum_should_match: 1,
+          minimum_should_match: minimum_should_match,
           should:               should,
         }
       else

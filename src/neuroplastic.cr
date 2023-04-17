@@ -19,7 +19,7 @@ module Neuroplastic
     {% found = nil %}
     {% for par in @type.ancestors %}
       {% if tables = par.constant(:TABLES) %}
-        {%  found = tables.uniq.size %}
+        {% found = tables.uniq.size %}
       {% end %}
     {% end %}
     {% unless found %}

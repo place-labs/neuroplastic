@@ -200,16 +200,19 @@ module Neuroplastic
         # Generate should field
         should = [query, parent_query, child_query].compact
         # Generate bool field
+        # {
+        #   bool: {
+        #     minimum_should_match: 1,
+        #     should:               should,
+        #     # filter:               [
+        #     #   {
+        #     #     term: {_document_type: doc_name},
+        #     #   },
+        #     # ],
+        #   },
+        # }
         {
-          bool: {
-            minimum_should_match: 1,
-            should:               should,
-            # filter:               [
-            #   {
-            #     term: {_document_type: doc_name},
-            #   },
-            # ],
-          },
+          should:               should,
         }
       else
         {

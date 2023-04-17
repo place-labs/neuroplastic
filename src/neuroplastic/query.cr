@@ -206,8 +206,8 @@ module Neuroplastic
             should:               should,
             filter:               [
               {
-                term: { _document_type: doc_name }
-              }
+                term: {_document_type: doc_name},
+              },
             ],
           },
         }

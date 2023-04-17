@@ -73,13 +73,6 @@ module Neuroplastic
       self
     end
 
-    getter minimum_should_match : Int32? = nil
-
-    def minimum_should_match(count : Int)
-      @minimum_should_match = count.to_i
-      self
-    end
-
     # Filters
     ###############################################################################################
 
@@ -200,13 +193,14 @@ module Neuroplastic
       }
 
       # Define bool field for `has_parent` and `has_child`
-      if doc_name = @parent || @child
+      if @parent || @child
         # Merge user defined query settings to the base query
         query_settings = @query_settings
         query = query_settings.nil? ? base_query : base_query.merge(query_settings)
         # Generate should field
         should = [query, parent_query, child_query].compact
         {
+          minimum_should_match: 1,
           should: should,
         }
       else
@@ -268,7 +262,6 @@ module Neuroplastic
         :must                 => must,
         :must_not             => must_not,
         :should               => should,
-        :minimum_should_match => minimum_should_match,
       }.compact
 
       {filter: {bool: bool}} unless bool.empty?

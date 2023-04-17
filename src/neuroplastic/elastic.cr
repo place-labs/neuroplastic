@@ -14,10 +14,10 @@ class Neuroplastic::Elastic(T)
   VALUE = "value"
 
   # Index defaults to rethinkdb table name
-  getter elastic_index : String = T.table_name
+  property elastic_index : String = T.table_name
 
   # Document type defaults to class name without namespace
-  getter elastic_document_name : String = Utils.document_name(T)
+  property elastic_document_name : String = Utils.document_name(T)
 
   def initialize(elastic_index : String? = nil, document_name : String? = nil)
     @elastic_document_name = document_name unless document_name.nil?

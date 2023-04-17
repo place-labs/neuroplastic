@@ -204,11 +204,11 @@ module Neuroplastic
           bool: {
             minimum_should_match: 1,
             should:               should,
-            filter:               [
-              {
-                term: {_document_type: doc_name},
-              },
-            ],
+            # filter:               [
+            #   {
+            #     term: {_document_type: doc_name},
+            #   },
+            # ],
           },
         }
       else

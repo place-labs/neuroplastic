@@ -61,6 +61,11 @@ class Neuroplastic::Elastic(T)
 
   private def _search(builder, block = nil)
     query = generate_body(builder)
+
+    pp "########################################"
+    puts query.build.to_json
+    pp "########################################"
+
     result = client.search(query.to_h)
 
     raw_records = get_records(result).to_a

@@ -193,7 +193,7 @@ module Neuroplastic
       }
 
       # Define bool field for `has_parent` and `has_child`
-      if @parent || @child
+      if doc_name = @parent || @child
         # Merge user defined query settings to the base query
         query_settings = @query_settings
         query = query_settings.nil? ? base_query : base_query.merge(query_settings)
@@ -204,6 +204,11 @@ module Neuroplastic
           bool: {
             minimum_should_match: 1,
             should:               should,
+            filter:               [
+              {
+                term: { _document_type: doc_name }
+              }
+            ],
           },
         }
       else

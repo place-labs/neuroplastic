@@ -32,6 +32,40 @@ describe Neuroplastic::Elastic do
       records[:results][0].name.should eq updated_name
     end
 
+    it "limits the search to specific fields", focus: true do
+      goat = Goat.create!(name: "Kim", job: "Big goat with 5 teeth", teeth: 5)
+      SearchIngest::Elastic.create_document(
+        document: goat,
+        index: Goat.table_name,
+      )
+
+      goat = Goat.create!(name: "Kylie", job: "Fat goat with 3 teeth", teeth: 3)
+      SearchIngest::Elastic.create_document(
+        document: goat,
+        index: Goat.table_name,
+      )
+
+      goat = Goat.create!(name: "Kendall Fat", job: "Big goat with 5 teeth", teeth: 5)
+      SearchIngest::Elastic.create_document(
+        document: goat,
+        index: Goat.table_name,
+      )
+
+      sleep 1
+
+      query = Goat.elastic.query({"q" => "Fat", "fields" => ["name"]})
+      records = Goat.elastic.search(query)
+      records[:total].should eq(1)
+
+      query = Goat.elastic.query({"q" => "Fat", "fields" => ["name", "job^3"]})
+      records = Goat.elastic.search(query)
+      records[:total].should eq(2)
+
+      query = Goat.elastic.query({"q" => "goat", "fields" => ["name"]})
+      records = Goat.elastic.search(query)
+      records[:total].should eq(0)
+    end
+
     it "should paginate" do
       query = Basic.elastic.query({"limit" => "1"})
       query.sort NAME_SORT_ASC

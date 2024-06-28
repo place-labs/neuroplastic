@@ -22,22 +22,33 @@ module Neuroplastic
 
     getter fields : Array(String) = [] of String
 
-    def initialize(params : HTTP::Params | Hash(String, String) | Hash(Symbol, String) = {} of String => String)
-      params = params.transform_keys(&.to_s) if params.is_a?(Hash(Symbol, String))
+    private def get_or_default(params, key, default_value)
+      case typeof(default_value)
+      when String then params[key]?.as(String) || default_value
+      when Int    then params[key]?.as(String).to_i || default_value
+      end
+    end
 
-      query = params["q"]? || "*"
+    def initialize(params : HTTP::Params | Hash(String, String | Array(String)) | Hash(Symbol, String | Array(String)) = {} of String => String)
+      params = params.transform_keys(&.to_s) if params.is_a?(Hash(Symbol, String | Array(String)))
+
+      query = params["q"]?.as?(String) || "*"
       @search = query.ends_with?('*') ? query : "#{query}*"
 
-      @limit = params["limit"]?.try(&.to_i) || 100
+      @limit = params["limit"]?.as?(String).try(&.to_i) || 100
       @limit = 10000 if @limit > 10000
 
-      @offset = params["offset"]?.try(&.to_i) || 0
+      @offset = params["offset"]?.as?(String).try(&.to_i) || 0
       @offset = 1000000 if @offset > 1000000
 
-      if search_ref = params["ref"]?
+      if search_ref = params["ref"]?.as?(String)
         @search_after = SearchAfter.from_json(Base64.decode_string(search_ref))
       else
         @search_after = nil
+      end
+
+      if (fields = params["fields"]?) && fields.is_a?(Array(String))
+        @fields = fields.as(Array(String))
       end
     end
 

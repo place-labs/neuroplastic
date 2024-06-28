@@ -16,26 +16,24 @@ x-search-ingest-client-env: &search-ingest-client-env
 
 services:
   test:
-    image: placeos/service-spec-runner:${CRYSTAL_VERSION:-1.2.2}
+    image: placeos/service-spec-runner
     volumes:
-      - ${PWD}/lib:/app/lib
-      - ${PWD}/shard.yml:/app/shard.yml
-      - ${PWD}/shard.override.yml:/app/shard.override.yml
       - ${PWD}/spec:/app/spec
       - ${PWD}/src:/app/src
+      - ${PWD}/lib:/app/lib
+      - ${PWD}/shard.override.yml:/app/shard.override.yml
+      - ${PWD}/shard.yml:/app/shard.yml.input
     depends_on:
       - elastic
       - rethink
-      - search-ingest
     environment:
       # Environment
       GITHUB_ACTION: ${GITHUB_ACTION:-}
       # Service Hosts
-      <<: *elastic-client-env
-      <<: *rethinkdb-client-env
+      <<: [*elastic-client-env,*rethinkdb-client-env]
 
   elastic:
-    image: blacktop/elasticsearch:${ELASTIC_VERSION:-7.9}
+    image: elasticsearch:7.17.6
     restart: always
     environment:
       discovery.type: single-node
@@ -43,16 +41,3 @@ services:
   rethink:
     image: rethinkdb:${RETHINKDB_VERSION:-2.4}
     restart: always
-    hostname: rethink
-
-  search-ingest: # RethinkDB to Elasticsearch Service
-    image: placeos/search-ingest:${PLACE_SEARCH_INGEST_TAG:-nightly}
-    restart: always
-    hostname: search-ingest
-    depends_on:
-      - elastic
-      - rethink
-    environment:
-      # Service Hosts
-      <<: *rethinkdb-client-env
-      <<: *elastic-client-env

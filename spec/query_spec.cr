@@ -16,7 +16,6 @@ describe Neuroplastic::Query do
 
       query.parent.should eq goat_document_type
       query.index.should eq parent_index
-
       JSON.parse(query_body.to_json).dig("should", 1, "has_parent", "parent_type").should eq goat_document_type
     end
 
@@ -65,6 +64,12 @@ describe Neuroplastic::Query do
       })
       filter_field = query.build[:filter].not_nil!
       filter_field.dig(:filter, :bool, :filter).should contain({range: {"teeth" => {:lte => 5}}})
+    end
+
+    it "#fields" do
+      query = Goat.elastic.query({"q" => "makes good cheese", "fields" => ["name", "teeth"]})
+      query_body = query.build[:query]
+      JSON.parse(query_body.to_json).dig("must", "simple_query_string", "fields").should eq ["name", "teeth"]
     end
   end
 end

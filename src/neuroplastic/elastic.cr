@@ -31,7 +31,7 @@ class Neuroplastic::Elastic(T)
   getter(client) { Neuroplastic::Client.new }
 
   # Safely build the query
-  def query(params = {} of Symbol => String, filters = nil)
+  def query(params = {} of Symbol => String | Array(String), filters = nil)
     builder = Query.new(params)
     builder.filter(filters) unless filters.nil?
 

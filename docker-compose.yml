@@ -5,14 +5,13 @@ version: "3.7"
 x-elastic-client-env: &elastic-client-env
   ELASTIC_HOST: ${ELASTIC_HOST:-elastic}
   ELASTIC_PORT: ${ELASTIC_PORT:-9200}
+  ELASTIC_USER: ${ELASTIC_USER:-elastic}
+  ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-changeme}
 
 x-rethinkdb-client-env: &rethinkdb-client-env
   RETHINKDB_HOST: ${RETHINKDB_HOST:-rethink}
   RETHINKDB_PORT: ${RETHINKDB_PORT:-28015}
   RETHINKDB_DB: ${RETHINKDB_DB:-place_development}
-
-x-search-ingest-client-env: &search-ingest-client-env
-  SEARCH_INGEST_URI: ${SEARCH_INGEST_URI:-http://search-ingest:3000}
 
 services:
   test:
@@ -30,13 +29,15 @@ services:
       # Environment
       GITHUB_ACTION: ${GITHUB_ACTION:-}
       # Service Hosts
-      <<: [*elastic-client-env,*rethinkdb-client-env]
+      <<: [*elastic-client-env, *rethinkdb-client-env]
 
   elastic:
     image: elasticsearch:7.17.6
     restart: always
     environment:
       discovery.type: single-node
+      xpack.security.enabled: true
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-changeme}
 
   rethink:
     image: rethinkdb:${RETHINKDB_VERSION:-2.4}

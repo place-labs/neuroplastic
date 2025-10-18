@@ -32,7 +32,7 @@ describe Neuroplastic::Elastic do
       records[:results][0].name.should eq updated_name
     end
 
-    it "limits the search to specific fields", focus: true do
+    it "limits the search to specific fields" do
       goat = Goat.create!(name: "Kim", job: "Big goat with 5 teeth", teeth: 5)
       SearchIngest::Elastic.create_document(
         document: goat,
@@ -135,6 +135,13 @@ describe Neuroplastic::Elastic do
       records = Goat.elastic.search(query)
       records[:total].should eq 1
       records[:results].size.should eq 1
+    end
+
+    it "#query with terms", focus: true do
+      query = Basic.elastic.query({"fields" => ["name.keyword"]})
+      query.filter({"$name.keyword" => ["Kim", "Kyle"]})
+      records = Basic.elastic.search(query)
+      p! records
     end
   end
 end

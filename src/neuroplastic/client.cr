@@ -15,6 +15,8 @@ class Neuroplastic::Client
     setting uri : URI? = Client.env_with_deprecation("ELASTIC_URI", "ES_URI").try(&->URI.parse(String))
     setting host : String = Client.env_with_deprecation("ELASTIC_HOST", "ES_HOST") || "127.0.0.1"
     setting port : Int32 = Client.env_with_deprecation("ELASTIC_PORT", "ES_PORT").try(&.to_i) || 9200
+    setting user : String? = Client.env_with_deprecation("ELASTIC_USER", "ES_USER")
+    setting password : String? = Client.env_with_deprecation("ELASTIC_PASSWORD", "ES_PASSWORD")
     setting tls : Bool = Client.env_with_deprecation("ELASTIC_TLS", "ES_TLS") == "true"
     setting pooled : Bool = Client.env_with_deprecation("ELASTIC_POOLED", "ES_POOLED") == "true"
     setting pool_size : Int32 = Client.env_with_deprecation("ELASTIC_CONN_POOL", "ES_CONN_POOL").try(&.to_i) || Client.indices
@@ -191,7 +193,7 @@ class Neuroplastic::Client
 
   # Yield an elastic client
   #
-  protected def self.client
+  protected def self.client(&)
     if settings.pooled
       client = pool.checkout
       result = yield client
@@ -213,11 +215,29 @@ class Neuroplastic::Client
                     context
                   end
 
-    if (uri = settings.uri).nil?
-      PoolHTTP.new(host: settings.host, port: settings.port, tls: tls_context)
-    else
-      PoolHTTP.new(uri: uri, tls: tls_context)
+    client = if (uri = settings.uri).nil?
+               PoolHTTP.new(host: settings.host, port: settings.port, tls: tls_context)
+             else
+               PoolHTTP.new(uri: uri, tls: tls_context)
+             end
+
+    # Set up basic auth if credentials are available
+    username, password = extract_credentials
+    if (usr = username) && (pwd = password)
+      client.basic_auth(usr, pwd)
     end
+
+    client
+  end
+
+  # Extract credentials from URI or separate env vars
+  private def self.extract_credentials : {String?, String?}
+    # First check if URI contains credentials
+    if (uri = settings.uri) && (usr = uri.user) && (pwd = uri.password)
+      return {usr, pwd}
+    end
+
+    {settings.user, settings.password}
   end
 
   private class PoolHTTP < HTTP::Client

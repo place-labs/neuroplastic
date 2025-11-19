@@ -280,7 +280,14 @@ module Neuroplastic
         :must     => must,
         :must_not => must_not,
         :should   => should,
-      }.compact
+      }
+
+      # Add minimum_should_match if should clauses exist and it's set
+      if should && (msm = minimum_should_match)
+        bool = bool.merge({:minimum_should_match => msm})
+      end
+
+      bool = bool.compact
 
       {filter: {bool: bool}} unless bool.empty?
     end

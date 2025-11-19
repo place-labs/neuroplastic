@@ -63,7 +63,8 @@ describe Neuroplastic::Query do
         },
       })
       filter_field = query.build[:filter].not_nil!
-      filter_field.dig(:filter, :bool, :filter).should contain({range: {"teeth" => {:lte => 5}}})
+      bool_filter = filter_field.dig(:filter, :bool, :filter).as(Array)
+      bool_filter.should contain({range: {"teeth" => {:lte => 5}}})
     end
 
     it "#fields" do

@@ -4,7 +4,7 @@ require "base64"
 module Neuroplastic
   class Query
     alias Sort = Hash(String, NamedTuple(order: Symbol)) | String | Hash(String, String)
-    alias FilterValue = Array(Int32) | Array(Float32) | Array(Bool) | Array(String) | Nil
+    alias FilterValue = Array(Int32) | Array(Int32?) | Array(Float32) | Array(Float32?) | Array(Bool) | Array(Bool?) | Array(String) | Array(String?) | Nil
     alias Filter = Hash(String, FilterValue)
 
     getter search : String
@@ -303,17 +303,18 @@ module Neuroplastic
       field_filter.empty? ? nil : field_filter
     end
 
-    alias Subfilter = Hash(Symbol, FilterTerm)
+    alias NotExistsFilter = NamedTuple(bool: NamedTuple(must_not: NamedTuple(exists: Hash(String, String))))
+    alias Subfilter = Hash(Symbol, FilterTerm) | NotExistsFilter
 
     # Generate a sub filter
     protected def build_sub_filters(key, values : FilterValue) : Array(Subfilter)
-      return [missing_term_filter(key)] if values.nil?
+      return [missing_term_filter(key).as(Subfilter)] if values.nil?
 
       values.map do |var|
         if var.nil?
-          missing_term_filter(key)
+          missing_term_filter(key).as(Subfilter)
         else
-          term_filter(key, var)
+          term_filter(key, var).as(Subfilter)
         end
       end
     end
@@ -321,16 +322,11 @@ module Neuroplastic
     alias FilterTerm = Hash(String, (Int32 | Float32 | Bool | String))
 
     protected def missing_term_filter(key)
-      sub = Subfilter.new
-      ft = FilterTerm.new
-      ft["field"] = key
-      sub[:missing] = ft
-
-      sub
+      {bool: {must_not: {exists: {"field" => key}}}}
     end
 
     protected def term_filter(key, value)
-      sub = Subfilter.new
+      sub = Hash(Symbol, FilterTerm).new
       ft = FilterTerm.new
       ft[key] = value
       sub[:term] = ft

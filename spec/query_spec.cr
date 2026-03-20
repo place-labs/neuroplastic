@@ -39,6 +39,23 @@ describe Neuroplastic::Query do
       filter_field.dig(:filter, :bool, :should).should eq expected
     end
 
+    it "#should with nil values" do
+      query = Goat.elastic.query({"q" => "SCREAMS"})
+      teeth = [1, nil] of Int32?
+
+      query.should({"teeth" => teeth})
+      query.minimum_should_match(1)
+      filter_field = query.build[:filter].not_nil!
+
+      should_clauses = filter_field.dig(:filter, :bool, :should)
+      parsed = JSON.parse(should_clauses.to_json)
+
+      # Should contain a term filter for value 1
+      parsed[0].should eq({"term" => {"teeth" => 1}})
+      # Should contain a must_not exists filter for nil
+      parsed[1].should eq({"bool" => {"must_not" => {"exists" => {"field" => "teeth"}}}})
+    end
+
     it "#must" do
       query = Goat.elastic.query({"q" => "stands on mountain"})
       query.must({"name" => ["billy"]})

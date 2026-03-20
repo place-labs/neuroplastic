@@ -9,7 +9,7 @@ require "search-ingest/search-ingest/table_manager"
 # ES
 ####################################################################################################
 
-SearchIngest::MANAGED_TABLES = [Base, Basic, Goat, Child::Kid]
+SearchIngest::MANAGED_TABLES = [TestBase, Basic, Goat, Child::Kid]
 Tables       = SearchIngest.tables(SearchIngest::MANAGED_TABLES).last
 Schemas      = SearchIngest.tables(SearchIngest::MANAGED_TABLES).first
 TableManager = SearchIngest::TableManager.new(tables: Tables, watch: false, backfill: false)
@@ -66,10 +66,10 @@ def create_basic
 end
 
 def create_base
-  base = Base.create!
+  base = TestBase.create!
   SearchIngest::Elastic.create_document(
     document: base,
-    index: Base.table_name,
+    index: TestBase.table_name,
   )
 end
 

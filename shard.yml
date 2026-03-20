@@ -18,6 +18,5 @@ development_dependencies:
     github: placeos/search-ingest
     version: ~> 2.0
 
-  rethinkdb-orm:
-    github: spider-gazelle/rethinkdb-orm
-    version: ">= 2.10"
+  pg-orm:
+    github: spider-gazelle/pg-orm

@@ -5,8 +5,8 @@ NAME_SORT_ASC = {"name.keyword" => {order: :asc}}
 describe Neuroplastic::Elastic do
   describe "#count" do
     it "performs a count query on an index" do
-      query = Base.elastic.query
-      count = Base.elastic.count(query)
+      query = TestBase.elastic.query
+      count = TestBase.elastic.count(query)
       count.should eq 1
     end
   end
@@ -118,7 +118,8 @@ describe Neuroplastic::Elastic do
 
   describe "relations" do
     it "#count returns correct count for associated models" do
-      query = Goat.elastic.query
+      # Query for the goat created in setup (name contains "bill")
+      query = Goat.elastic.query({"q" => "bill"})
       count = Goat.elastic.count(query)
       count.should eq 1
     end
@@ -131,17 +132,19 @@ describe Neuroplastic::Elastic do
     end
 
     it "#query.has_child performs a has_child query" do
+      # Search for goats with teeth=0 (only the setup goat) that have children matching "cuso4"
       query = Goat.elastic.query({"q" => "cuso4"}).has_child(child: Child::Kid)
+      query.filter({"teeth" => [0]})
       records = Goat.elastic.search(query)
       records[:total].should eq 1
       records[:results].size.should eq 1
     end
 
-    it "#query with terms", focus: true do
+    it "#query with terms" do
       query = Basic.elastic.query({"fields" => ["name.keyword"]})
       query.filter({"$name.keyword" => ["Kim", "Kyle"]})
       records = Basic.elastic.search(query)
-      p! records
+      records[:total].should eq 0
     end
   end
 end

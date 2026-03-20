@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS goat (
     name TEXT,
     teeth INTEGER NOT NULL DEFAULT 0,
     job TEXT NOT NULL DEFAULT 'being a goat',
+    nickname TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

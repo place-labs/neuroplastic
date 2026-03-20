@@ -264,7 +264,7 @@ module Neuroplastic
     protected def build_filter
       filters = @filters.try { |f| build_field_filter(f) }
       range = @range.try { |r| ({range: r}) }
-      missing = @missing.try(&.map { |field| {missing: {field: field}} })
+      missing = @missing.try(&.map { |field| {bool: {must_not: {exists: {field: field}}}} })
       exists = @exists.try(&.map { |field| {exists: {field: field}} })
 
       # Combine filters, remove nils and flatten a single level

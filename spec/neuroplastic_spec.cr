@@ -97,6 +97,34 @@ describe Neuroplastic::Elastic do
       final_result.in?({first_result, second_result}).should be_false
     end
 
+    it "#should with nil matches documents where field is missing" do
+      # Create a goat WITH a nickname (lowercase to match ES text analysis)
+      goat_with = Goat.create!(name: "Named Goat", nickname: "nanny", teeth: 99)
+      SearchIngest::Elastic.create_document(
+        document: goat_with,
+        index: Goat.table_name,
+      )
+
+      # Create a goat WITHOUT a nickname (nil)
+      goat_without = Goat.create!(name: "Unnamed Goat", teeth: 99)
+      SearchIngest::Elastic.create_document(
+        document: goat_without,
+        index: Goat.table_name,
+      )
+
+      sleep 1
+
+      elastic = Goat.elastic
+      query = elastic.query
+      query.should({"nickname" => ["nanny", nil]})
+      query.minimum_should_match(1)
+
+      records = elastic.search(query)
+      ids = records[:results].map(&.id)
+      ids.should contain(goat_with.id)
+      ids.should contain(goat_without.id)
+    end
+
     it "#must_not on a embedded document" do
       elastic = Child::Kid.elastic
       query = elastic.query

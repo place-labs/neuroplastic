@@ -24,6 +24,7 @@ class Goat < AbstractBase
   attribute name : String
   attribute teeth : Int32 = 0
   attribute job : String = "being a goat"
+  attribute nickname : String?
 end
 
 class Child::Kid < AbstractBase

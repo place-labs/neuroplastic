@@ -8,8 +8,6 @@ jobs:
   test:
     name: "Run spec suite"
     uses: PlaceOS/.github/.github/workflows/containerised-test.yml@main
-    with:
-      cache_shards: false
 
   crystal-style:
     name: "Check crystal style"

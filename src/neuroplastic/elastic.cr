@@ -13,6 +13,7 @@ class Neuroplastic::Elastic(T)
   HITS  = "hits"
   TOTAL = "total"
   VALUE = "value"
+  AGGS  = "aggregations"
 
   Log = ::Log.for("search")
 
@@ -45,7 +46,7 @@ class Neuroplastic::Elastic(T)
     query = generate_body(builder)
 
     # Simplify the query
-    body = query[:body].to_h.reject(:from, :size, :sort, :track_total_hits)
+    body = query[:body].to_h.reject(:from, :size, :sort, :track_total_hits, :aggs)
     simplified = query.merge({body: body})
     client.count(simplified)[COUNT].as_i
   end
@@ -75,10 +76,13 @@ class Neuroplastic::Elastic(T)
       ref = Base64.strict_encode(search_after.to_json)
     end
 
+    aggregations = result[AGGS]?
+
     {
-      total:   total,
-      results: records,
-      ref:     ref,
+      total:        total,
+      results:      records,
+      ref:          ref,
+      aggregations: aggregations,
     }
   end
 
@@ -116,6 +120,7 @@ class Neuroplastic::Elastic(T)
     query = opt[:query]
     filter = opt[:filter]
     sort = (opt[:sort]? || [] of Array(String)) + SCORE
+    aggs = opt[:aggs]?
 
     query_context = {
       # Only merge in filter if it contains fields
@@ -130,38 +135,36 @@ class Neuroplastic::Elastic(T)
       from = offset == 0 ? nil : offset
     end
 
-    if search_after
-      {
-        index: index,
-        body:  {
-          track_total_hits: true,
-          query:            query_context,
-          sort:             sort,
-          size:             opt[:limit],
-          search_after:     search_after,
-        },
-      }
-    elsif offset == 0
-      {
-        index: index,
-        body:  {
-          track_total_hits: true,
-          query:            query_context,
-          sort:             sort,
-          size:             opt[:limit],
-        },
-      }
-    else
-      {
-        index: index,
-        body:  {
-          track_total_hits: true,
-          query:            query_context,
-          sort:             sort,
-          from:             from,
-          size:             opt[:limit],
-        },
-      }
-    end
+    body = if search_after
+             {
+               track_total_hits: true,
+               query:            query_context,
+               sort:             sort,
+               size:             opt[:limit],
+               search_after:     search_after,
+             }
+           elsif offset == 0
+             {
+               track_total_hits: true,
+               query:            query_context,
+               sort:             sort,
+               size:             opt[:limit],
+             }
+           else
+             {
+               track_total_hits: true,
+               query:            query_context,
+               sort:             sort,
+               from:             from,
+               size:             opt[:limit],
+             }
+           end
+
+    body = body.merge({aggs: aggs}) if aggs
+
+    {
+      index: index,
+      body:  body,
+    }
   end
 end

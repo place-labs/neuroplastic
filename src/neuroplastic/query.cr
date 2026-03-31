@@ -1,11 +1,18 @@
 require "./utils"
 require "base64"
+require "json"
 
 module Neuroplastic
   class Query
     alias Sort = Hash(String, NamedTuple(order: Symbol)) | String | Hash(String, String)
     alias FilterValue = Array(Int32) | Array(Int32?) | Array(Float32) | Array(Float32?) | Array(Bool) | Array(Bool?) | Array(String) | Array(String?) | Nil
     alias Filter = Hash(String, FilterValue)
+    alias AggScalar = String | Int32 | Int64 | Float64 | Bool | Nil
+    alias AggValue = AggScalar | Array(AggValue) | Hash(String, AggValue)
+    alias AggHash = Hash(String, AggValue)
+    alias Aggs = Hash(String, AggHash)
+    alias AggRanges = Array(Hash(String, AggScalar))
+    alias NamedFilters = Hash(String, Filter)
 
     getter search : String
 
@@ -22,11 +29,8 @@ module Neuroplastic
 
     getter fields : Array(String) = [] of String
 
-    private def get_or_default(params, key, default_value)
-      case typeof(default_value)
-      when String then params[key]?.as(String) || default_value
-      when Int    then params[key]?.as(String).to_i || default_value
-      end
+    getter aggs : Aggs do
+      Aggs.new
     end
 
     def initialize(params : HTTP::Params | Hash(String, String | Array(String)) | Hash(Symbol, String | Array(String)) = {} of String => String)
@@ -120,6 +124,16 @@ module Neuroplastic
       self
     end
 
+    def filter(name : String, filters : Filter)
+      filter(name, filters) { }
+    end
+
+    def filter(name : String, filters : Filter, &)
+      register_agg(name, agg_body("filter", serialize_filter(filters), validate_field: false)) do |nested|
+        yield nested
+      end
+    end
+
     # Like filter, but at least one should match in absence of `filter`/`must` hits
     def should(filters : Filter)
       self.should.merge!(filters)
@@ -159,7 +173,6 @@ module Neuroplastic
 
       # Crystal fails to merge Hash(String, Int) into Hash(String, String | Int | etc)
       # This transformation is necessary to satisfy the union type RangeValue.
-      # FIXME: potential efficiency savings here
       transformed : RangeQuery = filter.transform_values do |filter_hash|
         filter_hash.transform_values &.as(RangeValue)
       end
@@ -173,6 +186,99 @@ module Neuroplastic
       self
     end
 
+    def range(name : String, field : String, ranges : AggRanges, *, keyed : Bool? = nil)
+      range(name, field, ranges, keyed: keyed) { }
+    end
+
+    def range(name : String, field : String, ranges : AggRanges, *, keyed : Bool? = nil, &)
+      raise Error::MalformedQuery.new("Range aggregation requires at least one range") if ranges.empty?
+
+      register_agg(name, agg_body("range", {
+        "field"  => field.as(AggValue),
+        "ranges" => serialize_ranges(ranges),
+        "keyed"  => keyed.as(AggValue),
+      })) do |nested|
+        yield nested
+      end
+    end
+
+    def terms(name : String, field : String, *, size : Int? = nil, order : Hash(String, String)? = nil, min_doc_count : Int? = nil)
+      terms(name, field, size: size, order: order, min_doc_count: min_doc_count) { }
+    end
+
+    def terms(name : String, field : String, *, size : Int? = nil, order : Hash(String, String)? = nil, min_doc_count : Int? = nil, &)
+      register_agg(name, agg_body("terms", {
+        "field"         => field.as(AggValue),
+        "size"          => size.try(&.to_i32).as(AggValue),
+        "order"         => serialize_hash(order),
+        "min_doc_count" => min_doc_count.try(&.to_i32).as(AggValue),
+      })) do |nested|
+        yield nested
+      end
+    end
+
+    def filters(name : String, filters : NamedFilters, *, other_bucket : Bool? = nil, other_bucket_key : String? = nil)
+      filters(name, filters, other_bucket: other_bucket, other_bucket_key: other_bucket_key) { }
+    end
+
+    def filters(name : String, filters : NamedFilters, *, other_bucket : Bool? = nil, other_bucket_key : String? = nil, &)
+      raise Error::MalformedQuery.new("Filters aggregation requires at least one named filter") if filters.empty?
+
+      register_agg(name, agg_body("filters", {
+        "filters"          => serialize_named_filters(filters),
+        "other_bucket"     => other_bucket.as(AggValue),
+        "other_bucket_key" => other_bucket_key.as(AggValue),
+      }, validate_field: false)) do |nested|
+        yield nested
+      end
+    end
+
+    def date_histogram(name : String, field : String, *, calendar_interval : String? = nil, fixed_interval : String? = nil, format : String? = nil, min_doc_count : Int? = nil)
+      date_histogram(name, field, calendar_interval: calendar_interval, fixed_interval: fixed_interval, format: format, min_doc_count: min_doc_count) { }
+    end
+
+    def date_histogram(name : String, field : String, *, calendar_interval : String? = nil, fixed_interval : String? = nil, format : String? = nil, min_doc_count : Int? = nil, &)
+      if calendar_interval.nil? && fixed_interval.nil?
+        raise Error::MalformedQuery.new("Date histogram aggregation requires calendar_interval or fixed_interval")
+      end
+
+      register_agg(name, agg_body("date_histogram", {
+        "field"             => field.as(AggValue),
+        "calendar_interval" => calendar_interval.as(AggValue),
+        "fixed_interval"    => fixed_interval.as(AggValue),
+        "format"            => format.as(AggValue),
+        "min_doc_count"     => min_doc_count.try(&.to_i32).as(AggValue),
+      })) do |nested|
+        yield nested
+      end
+    end
+
+    def nested(name : String, path : String)
+      nested(name, path) { }
+    end
+
+    def nested(name : String, path : String, &)
+      raise Error::MalformedQuery.new("Nested aggregation path cannot be empty") if path.empty?
+
+      register_agg(name, agg_body("nested", {
+        "path" => path.as(AggValue),
+      }, validate_field: false)) do |nested|
+        yield nested
+      end
+    end
+
+    def reverse_nested(name : String, path : String? = nil)
+      reverse_nested(name, path) { }
+    end
+
+    def reverse_nested(name : String, path : String? = nil, &)
+      register_agg(name, agg_body("reverse_nested", {
+        "path" => path.as(AggValue),
+      }, validate_field: false)) do |nested|
+        yield nested
+      end
+    end
+
     # Call to add fields that should be missing
     # Effectively adds a filter that ensures a field is missing
     def missing(*fields)
@@ -181,10 +287,38 @@ module Neuroplastic
       self
     end
 
+    def missing(name : String, field : String)
+      register_metric_agg(name, "missing", field)
+    end
+
     def exists(*fields)
       @exists ||= Set(String).new
       @exists.concat(fields)
       self
+    end
+
+    def avg(name : String, field : String)
+      register_metric_agg(name, "avg", field)
+    end
+
+    def sum(name : String, field : String)
+      register_metric_agg(name, "sum", field)
+    end
+
+    def min(name : String, field : String)
+      register_metric_agg(name, "min", field)
+    end
+
+    def max(name : String, field : String)
+      register_metric_agg(name, "max", field)
+    end
+
+    def stats(name : String, field : String)
+      register_metric_agg(name, "stats", field)
+    end
+
+    def cardinality(name : String, field : String)
+      register_metric_agg(name, "cardinality", field)
     end
 
     def build
@@ -195,6 +329,7 @@ module Neuroplastic
         limit:        limit,
         sort:         sort,
         search_after: search_after,
+        aggs:         aggs.empty? ? nil : aggs,
       }
     end
 
@@ -212,10 +347,8 @@ module Neuroplastic
 
       # Define bool field for `has_parent` and `has_child`
       if @parent || @child
-        # Merge user defined query settings to the base query
         query_settings = @query_settings
         query = query_settings.nil? ? base_query : base_query.merge(query_settings)
-        # Generate should field
         should = [query, parent_query, child_query].compact
         {
           minimum_should_match: minimum_should_match,
@@ -267,14 +400,12 @@ module Neuroplastic
       missing = @missing.try(&.map { |field| {bool: {must_not: {exists: {field: field}}}} })
       exists = @exists.try(&.map { |field| {exists: {field: field}} })
 
-      # Combine filters, remove nils and flatten a single level
       filters = [filters, range, missing, exists].compact.flatten
       filters = nil if filters.empty?
       should = @should.try { |f| build_field_filter(f) }
       must = @must.try { |f| build_field_filter(f) }
       must_not = @must_not.try { |f| build_field_filter(f) }
 
-      # Construct bool field, remove nil keys
       bool = {
         :filter   => filters,
         :must     => must,
@@ -282,7 +413,6 @@ module Neuroplastic
         :should   => should,
       }
 
-      # Add minimum_should_match if should clauses exist and it's set
       if should && (msm = minimum_should_match)
         bool = bool.merge({:minimum_should_match => msm})
       end
@@ -332,6 +462,360 @@ module Neuroplastic
       sub[:term] = ft
 
       sub
+    end
+
+    private def register_metric_agg(name : String, type : String, field : String)
+      register_agg(name, agg_body(type, {"field" => field.as(AggValue)}))
+    end
+
+    private def register_agg(name : String, body : AggHash)
+      register_agg(name, body) { }
+    end
+
+    private def register_agg(name : String, body : AggHash, &)
+      validate_agg_name(name)
+
+      nested = AggregationBuilder.new
+      yield nested
+      body["aggs"] = serialize_aggs(nested.aggs) unless nested.aggs.empty?
+
+      aggs[name] = body
+      self
+    end
+
+    private def validate_agg_name(name : String)
+      raise Error::MalformedQuery.new("Aggregation name cannot be empty") if name.empty?
+    end
+
+    private def validate_agg_field(field : String)
+      raise Error::MalformedQuery.new("Aggregation field cannot be empty") if field.empty?
+    end
+
+    private def agg_body(type : String, values : AggHash, *, validate_field : Bool = true) : AggHash
+      raise Error::MalformedQuery.new("Aggregation type cannot be empty") if type.empty?
+      if validate_field && (field = values["field"]?)
+        validate_agg_field(field.as(String))
+      end
+
+      body = AggHash.new
+      body[type] = without_nil_values(values).as(AggValue)
+      body
+    end
+
+    private def without_nil_values(values : AggHash) : AggHash
+      compacted = AggHash.new
+      values.each do |key, value|
+        compacted[key] = value unless value.nil?
+      end
+      compacted
+    end
+
+    private def serialize_hash(hash : Hash(String, String)?)
+      hash.try(&.transform_values(&.as(AggValue))).as(AggValue)
+    end
+
+    private def serialize_filter(filters : Filter) : AggHash
+      clauses = build_field_filter(filters)
+      raise Error::MalformedQuery.new("Aggregation filter requires at least one clause") if clauses.nil? || clauses.empty?
+
+      from_json_any(JSON.parse({bool: {filter: clauses}}.to_json)).as(AggHash)
+    end
+
+    private def serialize_named_filters(filters : NamedFilters)
+      filters.transform_values do |clauses|
+        serialize_filter(clauses).transform_values(&.as(AggValue)).as(AggValue)
+      end.as(AggValue)
+    end
+
+    private def serialize_ranges(ranges : AggRanges)
+      ranges.map do |range_def|
+        raise Error::MalformedQuery.new("Range aggregation definitions cannot be empty") if range_def.empty?
+        range_def.transform_values(&.as(AggValue)).as(AggValue)
+      end.as(AggValue)
+    end
+
+    private def serialize_aggs(aggregations : Aggs)
+      aggregations.transform_values(&.as(AggValue)).as(AggValue)
+    end
+
+    private def from_json_any(value : JSON::Any) : AggValue
+      if hash = value.as_h?
+        hash.transform_values { |child| from_json_any(child) }.as(AggValue)
+      elsif array = value.as_a?
+        array.map { |child| from_json_any(child) }.as(AggValue)
+      elsif bool = value.as_bool?
+        bool.as(AggValue)
+      elsif int = value.as_i?
+        int.to_i64.as(AggValue)
+      elsif float = value.as_f?
+        float.as(AggValue)
+      elsif string = value.as_s?
+        string.as(AggValue)
+      else
+        nil.as(AggValue)
+      end
+    end
+
+    class AggregationBuilder
+      getter aggs : Aggs do
+        Aggs.new
+      end
+
+      def terms(name : String, field : String, *, size : Int? = nil, order : Hash(String, String)? = nil, min_doc_count : Int? = nil)
+        terms(name, field, size: size, order: order, min_doc_count: min_doc_count) { }
+      end
+
+      def terms(name : String, field : String, *, size : Int? = nil, order : Hash(String, String)? = nil, min_doc_count : Int? = nil, &)
+        register_agg(name, agg_body("terms", {
+          "field"         => field.as(AggValue),
+          "size"          => size.try(&.to_i32).as(AggValue),
+          "order"         => serialize_hash(order),
+          "min_doc_count" => min_doc_count.try(&.to_i32).as(AggValue),
+        })) do |nested|
+          yield nested
+        end
+      end
+
+      def filter(name : String, filters : Filter)
+        filter(name, filters) { }
+      end
+
+      def filter(name : String, filters : Filter, &)
+        register_agg(name, agg_body("filter", serialize_filter(filters), validate_field: false)) do |nested|
+          yield nested
+        end
+      end
+
+      def filters(name : String, filters : NamedFilters, *, other_bucket : Bool? = nil, other_bucket_key : String? = nil)
+        filters(name, filters, other_bucket: other_bucket, other_bucket_key: other_bucket_key) { }
+      end
+
+      def filters(name : String, filters : NamedFilters, *, other_bucket : Bool? = nil, other_bucket_key : String? = nil, &)
+        raise Error::MalformedQuery.new("Filters aggregation requires at least one named filter") if filters.empty?
+
+        register_agg(name, agg_body("filters", {
+          "filters"          => serialize_named_filters(filters),
+          "other_bucket"     => other_bucket.as(AggValue),
+          "other_bucket_key" => other_bucket_key.as(AggValue),
+        }, validate_field: false)) do |nested|
+          yield nested
+        end
+      end
+
+      def range(name : String, field : String, ranges : AggRanges, *, keyed : Bool? = nil)
+        range(name, field, ranges, keyed: keyed) { }
+      end
+
+      def range(name : String, field : String, ranges : AggRanges, *, keyed : Bool? = nil, &)
+        raise Error::MalformedQuery.new("Range aggregation requires at least one range") if ranges.empty?
+
+        register_agg(name, agg_body("range", {
+          "field"  => field.as(AggValue),
+          "ranges" => serialize_ranges(ranges),
+          "keyed"  => keyed.as(AggValue),
+        })) do |nested|
+          yield nested
+        end
+      end
+
+      def date_histogram(name : String, field : String, *, calendar_interval : String? = nil, fixed_interval : String? = nil, format : String? = nil, min_doc_count : Int? = nil)
+        date_histogram(name, field, calendar_interval: calendar_interval, fixed_interval: fixed_interval, format: format, min_doc_count: min_doc_count) { }
+      end
+
+      def date_histogram(name : String, field : String, *, calendar_interval : String? = nil, fixed_interval : String? = nil, format : String? = nil, min_doc_count : Int? = nil, &)
+        if calendar_interval.nil? && fixed_interval.nil?
+          raise Error::MalformedQuery.new("Date histogram aggregation requires calendar_interval or fixed_interval")
+        end
+
+        register_agg(name, agg_body("date_histogram", {
+          "field"             => field.as(AggValue),
+          "calendar_interval" => calendar_interval.as(AggValue),
+          "fixed_interval"    => fixed_interval.as(AggValue),
+          "format"            => format.as(AggValue),
+          "min_doc_count"     => min_doc_count.try(&.to_i32).as(AggValue),
+        })) do |nested|
+          yield nested
+        end
+      end
+
+      def nested(name : String, path : String)
+        nested(name, path) { }
+      end
+
+      def nested(name : String, path : String, &)
+        raise Error::MalformedQuery.new("Nested aggregation path cannot be empty") if path.empty?
+
+        register_agg(name, agg_body("nested", {
+          "path" => path.as(AggValue),
+        }, validate_field: false)) do |nested|
+          yield nested
+        end
+      end
+
+      def reverse_nested(name : String, path : String? = nil)
+        reverse_nested(name, path) { }
+      end
+
+      def reverse_nested(name : String, path : String? = nil, &)
+        register_agg(name, agg_body("reverse_nested", {
+          "path" => path.as(AggValue),
+        }, validate_field: false)) do |nested|
+          yield nested
+        end
+      end
+
+      def missing(name : String, field : String)
+        register_metric_agg(name, "missing", field)
+      end
+
+      def avg(name : String, field : String)
+        register_metric_agg(name, "avg", field)
+      end
+
+      def sum(name : String, field : String)
+        register_metric_agg(name, "sum", field)
+      end
+
+      def min(name : String, field : String)
+        register_metric_agg(name, "min", field)
+      end
+
+      def max(name : String, field : String)
+        register_metric_agg(name, "max", field)
+      end
+
+      def stats(name : String, field : String)
+        register_metric_agg(name, "stats", field)
+      end
+
+      def cardinality(name : String, field : String)
+        register_metric_agg(name, "cardinality", field)
+      end
+
+      private def register_metric_agg(name : String, type : String, field : String)
+        register_agg(name, agg_body(type, {"field" => field.as(AggValue)}))
+      end
+
+      private def register_agg(name : String, body : AggHash)
+        register_agg(name, body) { }
+      end
+
+      private def register_agg(name : String, body : AggHash, &)
+        validate_agg_name(name)
+
+        nested = self.class.new
+        yield nested
+        body["aggs"] = serialize_aggs(nested.aggs) unless nested.aggs.empty?
+
+        aggs[name] = body
+        self
+      end
+
+      private def validate_agg_name(name : String)
+        raise Error::MalformedQuery.new("Aggregation name cannot be empty") if name.empty?
+      end
+
+      private def validate_agg_field(field : String)
+        raise Error::MalformedQuery.new("Aggregation field cannot be empty") if field.empty?
+      end
+
+      private def agg_body(type : String, values : AggHash, *, validate_field : Bool = true) : AggHash
+        raise Error::MalformedQuery.new("Aggregation type cannot be empty") if type.empty?
+        if validate_field && (field = values["field"]?)
+          validate_agg_field(field.as(String))
+        end
+
+        body = AggHash.new
+        body[type] = without_nil_values(values).as(AggValue)
+        body
+      end
+
+      private def without_nil_values(values : AggHash) : AggHash
+        compacted = AggHash.new
+        values.each do |key, value|
+          compacted[key] = value unless value.nil?
+        end
+        compacted
+      end
+
+      private def serialize_hash(hash : Hash(String, String)?)
+        hash.try(&.transform_values(&.as(AggValue))).as(AggValue)
+      end
+
+      private def serialize_filter(filters : Filter) : AggHash
+        clauses = build_field_filter(filters)
+        raise Error::MalformedQuery.new("Aggregation filter requires at least one clause") if clauses.nil? || clauses.empty?
+
+        from_json_any(JSON.parse({bool: {filter: clauses}}.to_json)).as(AggHash)
+      end
+
+      private def serialize_named_filters(filters : NamedFilters)
+        filters.transform_values do |clauses|
+          serialize_filter(clauses).transform_values(&.as(AggValue)).as(AggValue)
+        end.as(AggValue)
+      end
+
+      private def serialize_ranges(ranges : AggRanges)
+        ranges.map do |range_def|
+          raise Error::MalformedQuery.new("Range aggregation definitions cannot be empty") if range_def.empty?
+          range_def.transform_values(&.as(AggValue)).as(AggValue)
+        end.as(AggValue)
+      end
+
+      private def serialize_aggs(aggregations : Aggs)
+        aggregations.transform_values(&.as(AggValue)).as(AggValue)
+      end
+
+      private def from_json_any(value : JSON::Any) : AggValue
+        if hash = value.as_h?
+          hash.transform_values { |child| from_json_any(child) }.as(AggValue)
+        elsif array = value.as_a?
+          array.map { |child| from_json_any(child) }.as(AggValue)
+        elsif bool = value.as_bool?
+          bool.as(AggValue)
+        elsif int = value.as_i?
+          int.to_i64.as(AggValue)
+        elsif float = value.as_f?
+          float.as(AggValue)
+        elsif string = value.as_s?
+          string.as(AggValue)
+        else
+          nil.as(AggValue)
+        end
+      end
+
+      private def build_field_filter(filters : Filter)
+        field_filter = filters.flat_map do |key, value|
+          build_sub_filters(key, value)
+        end
+
+        field_filter.empty? ? nil : field_filter
+      end
+
+      private def build_sub_filters(key, values : FilterValue) : Array(Subfilter)
+        return [missing_term_filter(key).as(Subfilter)] if values.nil?
+
+        values.map do |var|
+          if var.nil?
+            missing_term_filter(key).as(Subfilter)
+          else
+            term_filter(key, var).as(Subfilter)
+          end
+        end
+      end
+
+      private def missing_term_filter(key)
+        {bool: {must_not: {exists: {"field" => key}}}}
+      end
+
+      private def term_filter(key, value)
+        sub = Hash(Symbol, FilterTerm).new
+        ft = FilterTerm.new
+        ft[key] = value
+        sub[:term] = ft
+
+        sub
+      end
     end
   end
 end

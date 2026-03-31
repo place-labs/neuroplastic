@@ -18,6 +18,12 @@ def recreate_test_indices
   Tables.each &.reindex
 end
 
+def clear_test_data
+  Basic.truncate(cascade: false)
+  TestBase.truncate(cascade: false)
+  Goat.truncate(cascade: true)
+end
+
 # Creates a random parent child across the child and parent indices
 def create_parent_child
   parent = Goat.create(name: "bill the #{Random.rand(100)}th")
@@ -73,12 +79,17 @@ def create_base
   )
 end
 
-Spec.before_suite do
-  ::Log.setup("*", level: :debug)
+::Log.setup("*", level: :debug)
 
+Spec.before_suite do
+  clear_test_data
   recreate_test_indices
   create_parent_child
   create_basic
   create_base
-  sleep 1
+  sleep 1.seconds
+end
+
+Spec.after_suite do
+  clear_test_data
 end

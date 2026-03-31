@@ -183,11 +183,11 @@ class Neuroplastic::Client
   #############################################################################
 
   protected class_getter pool : DB::Pool(PoolHTTP) {
-    DB::Pool(PoolHTTP).new(
+    DB::Pool(PoolHTTP).new(DB::Pool::Options.new(
       initial_pool_size: settings.pool_size // 4,
       max_pool_size: settings.pool_size,
       max_idle_pool_size: settings.idle_pool_size,
-      checkout_timeout: settings.pool_timeout
+      checkout_timeout: settings.pool_timeout)
     ) { elastic_connection }
   }
 
